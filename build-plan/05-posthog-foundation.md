@@ -28,7 +28,7 @@
 Run `npx -y @posthog/wizard@latest` and look at what it proposes: far more tracking than Hive needs. Then throw away its code changes so everyone continues from the same files:
 
 ```bash
-git checkout . && git clean -fd     # .env.local is git-ignored, so its keys stay
+git checkout . && git clean -fd -e build-plan     # keeps .env.local (git-ignored) and any new plan files
 ```
 
 ## Files, all VERBATIM
