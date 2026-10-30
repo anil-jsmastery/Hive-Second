@@ -22,7 +22,7 @@
    | Username | Sign-up with username **on**, Require username **on**, Sign-in with username **off**. In the panel beside them, set **Minimum length** to **3** (the default of 4 rejects the test username `ada`) |
    | Password | **On** |
    | Passkeys, Biometric | **Off** |
-   | User model | Defaults |
+   | User model | Defaults (first and last name on but not required, account deletion and email changes allowed), except **Allow users to change their username: off**. Hive copies the username into the profile once, at sign-up, as the `@handle`, so a later change in Clerk would leave the two out of step |
    | SSO connections (sidebar) | All social connections **off** |
 
 2. Copy the publishable and secret keys into `.env.local`. Also add the four `NEXT_PUBLIC_CLERK_*` URL variables from `CONTRACT.md`.
