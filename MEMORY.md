@@ -19,3 +19,10 @@ Never edit earlier blocks.
 - Hive Night design: app/hive-night.css is the design file's <style> block, unchanged; app/hive-night-app.css holds the integration rules. Dark only, Geist and Geist Mono.
 - build-plan/design/hive-night.html is the visual source of truth for every page. DESIGN.md wins on looks; the steps win on behaviour.
 - Shared: HiveMark, GlowDefs, Honeycomb, SkillGlyph, AvatarInitial, PageShell, EmptyState, NavLink, SiteHeader, SiteFooter, components/night/icons.tsx (the design's icons); lib/hash.ts. Toasts are sonner, bottom-center, class hive-toast.
+
+## After step 03
+- Supabase tables: profiles, organizations, skills, stars, comments, follows, notifications, activities. All have RLS.
+- RLS reads Clerk's session token: requesting_user_id() = sub, requesting_org_id() = active organization.
+- Triggers create activities and notifications and keep skills.stars_count correct. App code never does these.
+- search_skills(q, stack_filter) RPC returns up to 30 visible skills, ranked. slug_taken(candidate) checks every slug, including private ones.
+- lib/supabase/types.ts is generated (npm run db:types). lib/constants.ts, lib/slug.ts, lib/time.ts exist.
