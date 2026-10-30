@@ -11,11 +11,11 @@
 
 ## Files
 
-`app/dashboard/page.tsx`, `app/dashboard/actions.ts`, `components/dashboard/notification-list.tsx`, `components/dashboard/skills-panel.tsx`, `components/dashboard/sparkline.tsx`, `lib/queries/notifications.ts`, `lib/queries/dashboard.ts`, `supabase/migrations/0005_dashboard_stats.sql`. Update `components/site-header.tsx`.
+`app/dashboard/page.tsx`, `app/dashboard/actions.ts`, `components/dashboard/notification-list.tsx`, `components/dashboard/skills-panel.tsx`, `components/dashboard/sparkline.tsx`, `lib/queries/notifications.ts`, `lib/queries/dashboard.ts`, `supabase/migrations/0006_dashboard_stats.sql`. Update `components/site-header.tsx`.
 
 **The dashboard stats need one read-only database function.** The design shows four stats with "this week" numbers and trend lines. Some of that data is hidden by RLS (you can't read who starred your skills), so `dashboard_stats()` returns **counts only**, for the signed-in user. Apply it with the Supabase MCP `apply_migration` tool, unchanged, then regenerate the types with `npm run db:types`.
 
-`supabase/migrations/0005_dashboard_stats.sql`, **VERBATIM**:
+`supabase/migrations/0006_dashboard_stats.sql`, **VERBATIM**:
 
 ```sql
 -- Dashboard stats for the signed-in user: totals, this week's additions and an
@@ -258,7 +258,7 @@ export async function markAllNotificationsRead() {
 ## Checks
 
 - The page matches the design file's dashboard view: four stats with trend lines, the skills panel with tabs, and the Activity panel.
-- Supabase MCP `list_migrations` shows `0005_dashboard_stats`, and `npx tsc --noEmit` passes after `npm run db:types`.
+- Supabase MCP `list_migrations` shows `0006_dashboard_stats`, and `npx tsc --noEmit` passes after `npm run db:types`. The security advisor's note that signed-in users can execute `dashboard_stats` is expected: it returns counts for the caller only.
 - As user A, fork a seed skill. As user B, fork one of A's skills. A sees one unread notification and the header shows 1.
 - A's "Forks of your skills" stat shows 1 with "+1 this week".
 - "Mark all as read" clears the unread markers and the header count, and sends no event.
@@ -270,7 +270,7 @@ Append this block to the end of `MEMORY.md`, **VERBATIM**:
 
 ```md
 ## After step 13
-- /dashboard (Hive Night dashboard view): four stats from dashboard_stats() (migration 0005, counts only) with sparklines; skills panel with tabs (Your skills, Forks) from skillRows(); Activity panel (openNotification marks read, sends notification_clicked, redirects; markAllNotificationsRead sends no event).
+- /dashboard (Hive Night dashboard view): four stats from dashboard_stats() (migration 0006, counts only) with sparklines; skills panel with tabs (Your skills, Forks) from skillRows(); Activity panel (openNotification marks read, sends notification_clicked, redirects; markAllNotificationsRead sends no event).
 - Header shows unreadCount() from lib/queries/notifications.ts after the Dashboard link.
 ```
 

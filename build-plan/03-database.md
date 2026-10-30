@@ -31,7 +31,7 @@
 
 ## Apply the migrations
 
-Create these four files **VERBATIM**, then apply them **in order** with the Supabase MCP tool `apply_migration`, using the file name without `.sql` as the migration name and the file's contents as the query. (Alternative without MCP: `npx supabase link --project-ref "$SUPABASE_PROJECT_REF"` then `npx supabase db push`.)
+Create these five files **VERBATIM**, then apply them **in order** with the Supabase MCP tool `apply_migration`, using the file name without `.sql` as the migration name and the file's contents as the query. (Alternative without MCP: `npx supabase link --project-ref "$SUPABASE_PROJECT_REF"` then `npx supabase db push`.)
 
 `supabase/migrations/0001_schema.sql`
 
@@ -325,6 +325,33 @@ $$;
 grant execute on function public.slug_taken(text) to authenticated;
 ```
 
+`supabase/migrations/0005_hardening.sql`: the last migration. It clears the security advisor's warnings: it pins the session helpers' search path, removes API access to the trigger functions (triggers still fire, because Postgres doesn't check permission when a trigger runs), and lets only signed-in users call `slug_taken`.
+
+```sql
+-- Security hardening, so Supabase's security advisor has nothing to flag that
+-- the app doesn't need.
+
+-- 1. Pin the search path of the session helpers. Every RLS policy calls them,
+--    so a fixed search path stops a look-alike function in another schema from
+--    being picked up instead.
+alter function public.requesting_user_id() set search_path = '';
+alter function public.requesting_org_id() set search_path = '';
+
+-- 2. Trigger functions only run through their triggers, so nobody needs to call
+--    them through the API. Postgres doesn't check EXECUTE when a trigger fires,
+--    so the triggers keep working.
+revoke execute on function public.on_skill_created() from public, anon, authenticated;
+revoke execute on function public.on_star_created() from public, anon, authenticated;
+revoke execute on function public.on_star_deleted() from public, anon, authenticated;
+revoke execute on function public.on_comment_created() from public, anon, authenticated;
+revoke execute on function public.on_follow_created() from public, anon, authenticated;
+
+-- 3. slug_taken answers only "is this slug used?". The app calls it when a
+--    signed-in user publishes or forks, so signed-out visitors don't need it.
+revoke execute on function public.slug_taken(text) from public, anon;
+grant execute on function public.slug_taken(text) to authenticated;
+```
+
 ## Types and helpers
 
 Generate the database types (log in once with `npx supabase login`):
@@ -380,7 +407,8 @@ export async function uniqueSlug(
 ## Checks
 
 - Supabase MCP `list_tables` shows exactly 8 tables in `public`.
-- Supabase MCP `get_advisors` (security) shows no "RLS disabled" warnings.
+- Supabase MCP `list_migrations` shows `0001_schema` to `0005_hardening`.
+- Supabase MCP `get_advisors` (security) shows no "RLS disabled" and no "function search path mutable" warnings, and the trigger functions aren't executable by signed-out or signed-in users. One note is expected and intentional: signed-in users can execute `slug_taken`, which only answers whether a slug is used.
 - In the SQL editor, `select public.search_skills('');` runs without error.
 - `npx tsc --noEmit` passes.
 - `git check-ignore supabase/.temp` prints `supabase/.temp`.
@@ -392,6 +420,7 @@ Append this block to the end of `MEMORY.md`, **VERBATIM**:
 ```md
 ## After step 03
 - Supabase tables: profiles, organizations, skills, stars, comments, follows, notifications, activities. All have RLS.
+- Migration 0005_hardening: session helpers have a fixed search_path; trigger functions aren't callable through the API; slug_taken is callable by signed-in users only.
 - RLS reads Clerk's session token: requesting_user_id() = sub, requesting_org_id() = active organization.
 - Triggers create activities and notifications and keep skills.stars_count correct. App code never does these.
 - search_skills(q, stack_filter) RPC returns up to 30 visible skills, ranked. slug_taken(candidate) checks every slug, including private ones.

@@ -26,3 +26,6 @@ Never edit earlier blocks.
 - Triggers create activities and notifications and keep skills.stars_count correct. App code never does these.
 - search_skills(q, stack_filter) RPC returns up to 30 visible skills, ranked. slug_taken(candidate) checks every slug, including private ones.
 - lib/supabase/types.ts is generated (npm run db:types). lib/constants.ts, lib/slug.ts, lib/time.ts exist.
+
+## Plan update: 0005 hardening
+- Migration 0005_hardening: session helpers have a fixed search_path; trigger functions aren't callable through the API; slug_taken is callable by signed-in users only. Step 13's migration is 0006.
