@@ -11,9 +11,13 @@
 
 **Identity lesson (optional):** first build this step with `AnalyticsIdentity` left out of the layout, sign up once, and look in PostHog at how the anonymous visit and the signed-in user look like two different people. Then add it, and watch them merge.
 
-## Dashboard checklist (Clerk, development instance)
+## Clerk setup (development instance)
 
-1. Create an application named `Hive`. Then set **User & authentication** exactly like this:
+1. **The user** creates an application named `Hive` (an account login, so it's the user's job).
+2. **The user** puts its publishable and secret keys in `.env.local`, plus the four `NEXT_PUBLIC_CLERK_*` URL variables from `CONTRACT.md`.
+3. **The agent applies the User & authentication settings below**, so nobody has to click through every tab. Use the Clerk CLI and Clerk's instance configuration API, as the installed `clerk-cli` skill describes (log the CLI in to the `Hive` application if it asks). Run a **dry run first**, show the user exactly which settings change, and apply only after they agree (AGENTS.md rule 11). The API also accepts a username minimum of **3**, which the dashboard doesn't allow. If a setting can't be applied this way, give the user its dashboard path from the table instead. Afterwards, read the settings back and report them.
+
+   The settings, exactly:
 
    | Tab | Setting |
    | --- | --- |
@@ -25,13 +29,12 @@
    | User model | Defaults (first and last name on but not required, account deletion and email changes allowed), except **Allow users to change their username: off**. Hive copies the username into the profile once, at sign-up, as the `@handle`, so a later change in Clerk would leave the two out of step |
    | SSO connections (sidebar) | All social connections **off** |
 
-2. Copy the publishable and secret keys into `.env.local`. Also add the four `NEXT_PUBLIC_CLERK_*` URL variables from `CONTRACT.md`.
-3. **Clerk side of the Supabase integration:** open **Integrations → Supabase** and turn **Activate Supabase integration** on. Check that it shows as on: if it's off, Clerk's session token has no `role: authenticated` claim and every Supabase request from a signed-in user fails. Copy the **Clerk domain** it shows (it looks like `https://<name>.clerk.accounts.dev`).
-4. Keep the instance in **development**. The swarm needs its test emails (`+clerk_test`, code `424242`) and test mode.
+4. **Clerk side of the Supabase integration** (the user, in the dashboard): open **Integrations → Supabase** and turn **Activate Supabase integration** on. Check that it shows as on: if it's off, Clerk's session token has no `role: authenticated` claim and every Supabase request from a signed-in user fails. Copy the **Clerk domain** it shows (it looks like `https://<name>.clerk.accounts.dev`).
+5. Keep the instance in **development**. The swarm needs its test emails (`+clerk_test`, code `424242`) and test mode.
 
 ## Dashboard checklist (Supabase)
 
-1. **Supabase side of the integration:** in the `hive` project, **Authentication → Sign In / Providers → Third-Party Auth → Add provider → Clerk**. Paste the Clerk domain from the Clerk checklist and create the connection. Use the domain of the Clerk **development** instance, the one whose keys are in `.env.local`.
+1. **Supabase side of the integration:** in the `hive` project, **Authentication → Sign In / Providers → Third-Party Auth → Add provider → Clerk**. Paste the Clerk domain from the Clerk setup and create the connection. Use the domain of the Clerk **development** instance, the one whose keys are in `.env.local`.
 
 Together, the two halves form one handshake: Clerk signs its session tokens in the shape Supabase expects, and Supabase trusts tokens from that Clerk domain. No JWT secrets are copied and no users are synced: RLS reads the user straight from the Clerk token (`auth.jwt()->>'sub'`).
 

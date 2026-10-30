@@ -151,7 +151,10 @@ The login can pick any PostHog project for now: Hive's own project is created in
 11. Dashboard work (Clerk, Supabase, PostHog, Vercel), logins and API keys belong
     to the user. When a step needs one, stop, tell the user exactly what to do,
     and wait for them to confirm. Never ask the user to paste a secret key into
-    the chat; they put keys in .env.local themselves.
+    the chat; they put keys in .env.local themselves. Exception: when a step says
+    the agent applies settings through an official CLI or API, do a dry run
+    first, show the user exactly what will change, and apply only after they
+    agree.
 12. If something can't work with the pinned versions or the dashboard settings,
     stop and report the problem instead of improvising.
 13. When done, run the step's checks and report each one as pass or fail. If every
