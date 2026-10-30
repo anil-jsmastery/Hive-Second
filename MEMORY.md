@@ -48,3 +48,8 @@ Never edit earlier blocks.
 
 ## After step 07
 - Landing page (Hive Night home view): hero with one CTA (landing_cta_clicked) over the Honeycomb, and ActivityFeed: 8 rows from latestActivity() in lib/queries/activity.ts, refreshed every 15 seconds with the design's animations.
+
+## After step 08
+- /explore: URL state (q, stack), search form, stack filter pills, SkillCard list from searchSkills() in lib/queries/search.ts (search_skills RPC).
+- Events: search_performed (TrackOnMount keyed by query and stack), search_result_opened (SkillCard).
+- SkillCard shows author, stack, team badge, Private badge, tags and stars.
