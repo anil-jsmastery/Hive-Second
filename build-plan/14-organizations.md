@@ -11,7 +11,22 @@
 
 ## Dashboard checklist (Clerk)
 
-1. **Organizations → Settings:** enable Organizations. Allow **personal accounts** (people can use Hive without a team). Enable **organization slugs**. Let any user create organizations. Keep the default roles (`admin`, `member`).
+Do this at the start of this step, not earlier: until now Hive has been for individuals only.
+
+1. **Organizations → Settings → Enable organizations.** In the dialog, choose **Membership optional** (this keeps **personal accounts**), then enable. Don't keep the default, Membership required: it sends every signed-in user through a "choose an organization" screen before they can use Hive, which would break sign-up for individuals and the swarm.
+2. Then, on the same settings page:
+
+   | Setting | Value | Why |
+   | --- | --- | --- |
+   | Allow personal accounts | **On** | People use Hive on their own as well as in teams |
+   | Organization slugs | **On** (off by default in new applications) | Team pages live at `/o/[slug]` |
+   | Allow user-created organizations | **On** (the default) | Any user can create a team from the switcher |
+   | Organization creation limit, default membership limit | Defaults | Not used by Hive |
+   | Verified domains | **Off** | Not used by Hive |
+   | Allow new members to delete organizations | Default | Not used by Hive |
+   | Roles & Permissions | Defaults (`admin`, `member`) | Hive doesn't check roles |
+
+3. Check: as a signed-in user, the header's organization switcher shows your personal account and "Create organization", and signing in doesn't ask you to pick an organization.
 
 ## Files
 
