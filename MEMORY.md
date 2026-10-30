@@ -29,3 +29,7 @@ Never edit earlier blocks.
 
 ## Plan update: 0005 hardening
 - Migration 0005_hardening: session helpers have a fixed search_path; trigger functions aren't callable through the API; slug_taken is callable by signed-in users only. Step 13's migration is 0006.
+
+## After step 04
+- seed/skills/ holds the 30 skill files copied from build-plan/seed-skills/.
+- npm run db:seed resets all skills, stars, comments, follows, notifications and activities, then loads 8 seed authors (ids start with seed_) and 30 public skills.
