@@ -45,3 +45,6 @@ Never edit earlier blocks.
 - lib/profile.ts getCurrentProfile() creates the profile on first sign-in and sends user_signed_up once.
 - AnalyticsIdentity identifies the Clerk user, resets on sign-out and sets the organization group.
 - /onboarding saves the stack to profiles and to PostHog person properties.
+
+## After step 07
+- Landing page (Hive Night home view): hero with one CTA (landing_cta_clicked) over the Honeycomb, and ActivityFeed: 8 rows from latestActivity() in lib/queries/activity.ts, refreshed every 15 seconds with the design's animations.
