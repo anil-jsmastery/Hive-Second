@@ -21,7 +21,8 @@
    | Bounce rate duration | **10** (the default) | Leave it |
    | Enable web vitals autocapture | **Off** | It's a project setting that `autocapture: false` doesn't cover, and it sends a `$web_vitals` event after every page view |
 
-4. Some PostHog features are switched on from the project settings rather than from code. If live events shows any `$` event other than `$pageview`, `$pageleave` or `$exception`, find its setting in **Settings → Project** and turn it off. Session replay, heatmaps and exception autocapture are turned on deliberately in Step 15.
+4. **Point the PostHog CLI and MCP server at this project.** Step 00 logged the CLI in before this project existed, so it's linked to another one. In your own terminal, run `posthog-cli login`, choose the region (EU or US, as in item 2) and pick the new `Hive` project. Then, in Claude Code, run `/mcp` and make sure the PostHog server is on the same project (log out and in again if it isn't). The app, the CLI and the MCP server must all use this one project, or events, flags and insights end up in different places.
+5. Some PostHog features are switched on from the project settings rather than from code. If live events shows any `$` event other than `$pageview`, `$pageleave` or `$exception`, find its setting in **Settings → Project** and turn it off. Session replay, heatmaps and exception autocapture are turned on deliberately in Step 15.
 
 ## Try the wizard first, then discard it
 
@@ -188,6 +189,7 @@ If the pinned `posthog-js` doesn't support an option above (for example `capture
 ## Checks
 
 - `npm run build` passes.
+- The PostHog CLI (`posthog-cli`), the PostHog MCP server and `NEXT_PUBLIC_POSTHOG_KEY` all point at the same project: the agent reports each one's project name or ID.
 - Opening `/` shows a `$pageview` in PostHog's live events, and nothing else: no `$autocapture` and no `$web_vitals`.
 - Ask the PostHog MCP: "List the events received in the last hour". It returns only `$pageview` (and `$pageleave`).
 

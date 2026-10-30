@@ -102,6 +102,8 @@ npx -y @posthog/wizard@latest cli add     # choose Claude Code when asked
 
 It installs the PostHog CLI on the user's machine and writes a `<posthog>` block into their **global** `~/.claude/CLAUDE.md`. When the user says it's done, copy that `<posthog>` block unchanged into the bottom of `AGENTS.md` (step 4).
 
+The login can pick any PostHog project for now: Hive's own project is created in Step 05, and Step 05 logs the CLI in to it.
+
 ## 4. Project memory files
 
 `.env.example`: the environment variable block from `build-plan/CONTRACT.md`, **VERBATIM**. `create-next-app`'s `.gitignore` ignores `.env*`, so add the line `!.env.example` directly below `.env*`. The example file is committed; `.env.local` stays ignored.

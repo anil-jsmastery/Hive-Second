@@ -32,7 +32,7 @@ Do this at the start of this step, not earlier: until now Hive has been for indi
 
 | File | Change |
 | --- | --- |
-| `components/site-header.tsx` | Signed in: in `.bar-right`, add `<OrganizationSwitcher hidePersonal={false} afterCreateOrganizationUrl="/dashboard" afterSelectOrganizationUrl="/dashboard" afterSelectPersonalUrl="/dashboard" appearance={{ elements: { organizationSwitcherTrigger: 'org' } }} />` before `<UserButton>`, with a 16px gap |
+| `components/site-header.tsx` | Signed in: in `.bar-right`, add `<OrganizationSwitcher hidePersonal={false} afterCreateOrganizationUrl="/dashboard" afterSelectOrganizationUrl="/dashboard" afterSelectPersonalUrl="/dashboard" appearance={{ elements: { organizationSwitcherTrigger: 'org' } }} />` before `<UserMenu>`, with a 16px gap |
 | `app/o/[slug]/page.tsx` | New: the team page (spec below) |
 | `components/publish/publish-form.tsx` | Add "Publish as" (spec below) |
 | `app/publish/page.tsx` | Pass the active team's name to the form: `const org = await ensureOrganization()` |

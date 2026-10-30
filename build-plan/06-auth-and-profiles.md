@@ -26,12 +26,16 @@
    | SSO connections (sidebar) | All social connections **off** |
 
 2. Copy the publishable and secret keys into `.env.local`. Also add the four `NEXT_PUBLIC_CLERK_*` URL variables from `CONTRACT.md`.
-3. Open **Integrations → Supabase** and turn the integration **on**. Check that it shows as on: if it's off, Clerk's token has no `role` claim and every Supabase request from a signed-in user fails. Copy the Clerk domain it shows.
+3. **Clerk side of the Supabase integration:** open **Integrations → Supabase** and turn **Activate Supabase integration** on. Check that it shows as on: if it's off, Clerk's session token has no `role: authenticated` claim and every Supabase request from a signed-in user fails. Copy the **Clerk domain** it shows (it looks like `https://<name>.clerk.accounts.dev`).
 4. Keep the instance in **development**. The swarm needs its test emails (`+clerk_test`, code `424242`) and test mode.
 
 ## Dashboard checklist (Supabase)
 
-1. **Authentication → Sign In / Providers → Third-Party Auth → Add provider → Clerk**, and paste the Clerk domain from above.
+1. **Supabase side of the integration:** in the `hive` project, **Authentication → Sign In / Providers → Third-Party Auth → Add provider → Clerk**. Paste the Clerk domain from the Clerk checklist and create the connection. Use the domain of the Clerk **development** instance, the one whose keys are in `.env.local`.
+
+Together, the two halves form one handshake: Clerk signs its session tokens in the shape Supabase expects, and Supabase trusts tokens from that Clerk domain. No JWT secrets are copied and no users are synced: RLS reads the user straight from the Clerk token (`auth.jwt()->>'sub'`).
+
+**If signed-in pages fail after this step:** Supabase answering 401, `PGRST301` or "permission denied" for a signed-in user means the handshake is broken. Check that the Clerk integration toggle is on, and that the domain in Supabase matches the Clerk instance whose keys are in `.env.local` (no trailing slash). Signed-out pages keep working either way, which is why the error only shows up after sign-in.
 
 ## Files
 
@@ -41,6 +45,7 @@
 | `lib/supabase/server.ts` | VERBATIM below |
 | `lib/profile.ts` | VERBATIM below |
 | `components/analytics/analytics-identity.tsx` | VERBATIM below |
+| `components/user-menu.tsx` | VERBATIM below (the header's user menu, a client component) |
 | `app/layout.tsx` | Wrap everything in `<ClerkProvider>` with the appearance in DESIGN.md › Clerk components, VERBATIM (`shadcn` from `@clerk/ui/themes`). Call `getCurrentProfile()` and render `<AnalyticsIdentity stack={profile?.stack ?? null} />` after the footer |
 | `app/sign-in/[[...sign-in]]/page.tsx` | `<section className="page signin-page"><Honeycomb fx={0.5} fy={0.5} max={0.22} seed={29} /><div className="center"><SignIn /></div></section>` (the design's Sign in view) |
 | `app/sign-up/[[...sign-up]]/page.tsx` | The same as sign-in, with `<SignUp />` |
@@ -198,14 +203,39 @@ export function AnalyticsIdentity({ stack }: { stack: string | null }) {
 **Header, signed in** (`<Show when="signed-in">`):
 
 1. In `.nav-links`, after "Publish": `<NavLink href="/dashboard">Dashboard</NavLink>`. In Step 13 it gets an unread count.
-2. In `.bar-right`: `<UserButton>` (its avatar gets the design's glow through the ClerkProvider appearance) with one extra menu item: `<UserButton.MenuItems><UserButton.Link label="Profile" labelIcon={<UserIcon className="size-4" />} href={`/u/${profile.handle}`} /></UserButton.MenuItems>`.
+2. In `.bar-right`: `<UserMenu handle={profile?.handle ?? null} />` from `components/user-menu.tsx`: Clerk's `<UserButton>` with one extra menu item, "Profile", linking to `/u/{handle}`. Its avatar gets the design's glow through the ClerkProvider appearance.
+
+**The user menu must be a client component.** Clerk only recognises `<UserButton.MenuItems>` and `<UserButton.Link>` inside a client component, and `SiteHeader` is a server component (it awaits `getCurrentProfile()`). Written straight into `SiteHeader`, Clerk ignores the custom item and logs two console errors. So `SiteHeader` passes the handle to this small client component.
+
+`components/user-menu.tsx`, **VERBATIM**:
+
+```tsx
+'use client';
+import { UserButton } from '@clerk/nextjs';
+import { UserIcon } from 'lucide-react';
+
+// Clerk only recognises <UserButton.MenuItems> and <UserButton.Link> inside a
+// client component, and SiteHeader is a server component (it awaits the
+// profile). So the user menu lives here and gets the handle as a prop.
+export function UserMenu({ handle }: { handle: string | null }) {
+  if (!handle) return <UserButton />;
+  return (
+    <UserButton>
+      <UserButton.MenuItems>
+        <UserButton.Link label="Profile" labelIcon={<UserIcon className="size-4" />} href={`/u/${handle}`} />
+      </UserButton.MenuItems>
+    </UserButton>
+  );
+}
+```
 
 ## Checks
 
 - Sign up with `ada+clerk_test@example.com`, username `ada`, any password, verification code `424242`. You land on `/onboarding`.
-- Supabase has a `profiles` row with `id` = your Clerk user id and `handle` = `ada`.
+- Supabase has a `profiles` row with `id` = your Clerk user id and `handle` = `ada`. (This proves the Clerk and Supabase handshake works: the row was inserted through RLS with Clerk's token.)
 - PostHog shows exactly one `user_signed_up`, and your earlier anonymous `$pageview`s are merged into the identified person.
 - Choosing "Python" and Continue sets `stack: Python` on the PostHog person and in `profiles`.
+- Signed in, the browser console shows no Clerk errors, and the avatar menu has a "Profile" item linking to `/u/ada`.
 - Sign out from the user menu, then sign in again: still one person in PostHog, no second `user_signed_up`.
 - In the Supabase SQL editor, running `set role anon; insert into profiles (id, handle, display_name) values ('x', 'x', 'x');` fails with a row-level security error.
 
@@ -220,6 +250,7 @@ Append this block to the end of `MEMORY.md`, **VERBATIM**:
 - lib/profile.ts getCurrentProfile() creates the profile on first sign-in and sends user_signed_up once.
 - AnalyticsIdentity identifies the Clerk user, resets on sign-out and sets the organization group.
 - /onboarding saves the stack to profiles and to PostHog person properties.
+- Header user menu: components/user-menu.tsx is a client component (Clerk's UserButton custom items only work in client components); SiteHeader passes it the handle.
 ```
 
 ## Finish this step
