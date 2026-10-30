@@ -14,3 +14,8 @@ Never edit earlier blocks.
 
 ## After step 01
 - PRODUCT.md, TRACKING_PLAN.md and DECISIONS.md exist. The tracking plan is the only source of event names.
+
+## After step 02
+- Hive Night design: app/hive-night.css is the design file's <style> block, unchanged; app/hive-night-app.css holds the integration rules. Dark only, Geist and Geist Mono.
+- build-plan/design/hive-night.html is the visual source of truth for every page. DESIGN.md wins on looks; the steps win on behaviour.
+- Shared: HiveMark, GlowDefs, Honeycomb, SkillGlyph, AvatarInitial, PageShell, EmptyState, NavLink, SiteHeader, SiteFooter, components/night/icons.tsx (the design's icons); lib/hash.ts. Toasts are sonner, bottom-center, class hive-toast.
