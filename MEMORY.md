@@ -11,3 +11,6 @@ Never edit earlier blocks.
 - AGENTS.md: our rules on top (rule 14: no design skills or plugins; the design file decides the look); the Next.js and PostHog blocks below are tool-managed and never edited.
 - MCP servers in .mcp.json: clerk, supabase (scoped by SUPABASE_PROJECT_REF), posthog.
 - Agent skills in .agents/skills/ (Clerk: Next.js, billing, organizations, custom flows, CLI; Supabase; four PostHog skills). Git-ignored: each person installs them in Step 00.
+
+## After step 01
+- PRODUCT.md, TRACKING_PLAN.md and DECISIONS.md exist. The tracking plan is the only source of event names.
