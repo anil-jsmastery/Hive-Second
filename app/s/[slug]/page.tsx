@@ -10,6 +10,7 @@ import { SkillActions } from '@/components/skill/skill-actions';
 import { Markdown } from '@/components/skill/markdown';
 import { ShareTracker } from '@/components/skill/share-tracker';
 import { MoreLikeThis } from '@/components/skill/more-like-this';
+import { Comments } from '@/components/skill/comments';
 import { getSkill, hasStarred } from '@/lib/queries/skill';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { timeAgo } from '@/lib/time';
@@ -61,6 +62,7 @@ export default async function SkillPage({ params }: PageProps<'/s/[slug]'>) {
             <div className="doc-bar"><HexIcon /><span>{slug}.md</span></div>
             <Markdown content={content} />
           </article>
+          <Comments skillId={skill.id} slug={slug} />
         </div>
         <aside className="d-side">
           <section className="side-card">

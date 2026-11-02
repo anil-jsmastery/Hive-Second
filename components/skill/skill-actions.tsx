@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { InstallIcon, LinkIcon, StarIcon } from '@/components/night/icons';
-import { installSkill, toggleStar } from '@/app/s/[slug]/actions';
+import { ForkIcon, InstallIcon, LinkIcon, StarIcon } from '@/components/night/icons';
+import { forkSkill, installSkill, toggleStar } from '@/app/s/[slug]/actions';
 
 export function SkillActions({ slug, isPublic, starred: initialStarred, starsCount: initialCount }: {
   slug: string;
@@ -18,6 +18,7 @@ export function SkillActions({ slug, isPublic, starred: initialStarred, starsCou
   const [starsCount, setStarsCount] = useState(initialCount);
   const [starPending, startStar] = useTransition();
   const [installPending, startInstall] = useTransition();
+  const [forkPending, startFork] = useTransition();
   const published = useRef(false);
   const justPublished = searchParams.get('published') === '1';
 
@@ -47,6 +48,19 @@ export function SkillActions({ slug, isPublic, starred: initialStarred, starsCou
     });
   }
 
+  function onFork() {
+    startFork(async () => {
+      const result = await forkSkill(slug);
+      if ('needsAuth' in result) return toSignIn();
+      if ('error' in result) {
+        toast(result.error);
+        return;
+      }
+      router.push(`/s/${result.slug}`);
+      toast('Forked to your skills');
+    });
+  }
+
   function onShare() {
     navigator.clipboard.writeText(`${location.origin}/s/${slug}?ref=share`).catch(() => {});
     toast('Link copied');
@@ -73,9 +87,14 @@ export function SkillActions({ slug, isPublic, starred: initialStarred, starsCou
         <span className="star-n">{starsCount}</span>
       </button>
       {isPublic ? (
-        <button type="button" className="btn-ghost icon-btn" aria-label="Share" title="Copy link" onClick={onShare}>
-          <LinkIcon />
-        </button>
+        <>
+          <button type="button" className="btn-ghost icon-btn" aria-label="Fork" title="Fork" onClick={onFork} disabled={forkPending}>
+            <ForkIcon />
+          </button>
+          <button type="button" className="btn-ghost icon-btn" aria-label="Share" title="Copy link" onClick={onShare}>
+            <LinkIcon />
+          </button>
+        </>
       ) : null}
       <button type="button" className="btn-ember d-install" onClick={onInstall} disabled={installPending}>
         <InstallIcon />Install
