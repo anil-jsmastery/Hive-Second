@@ -35,14 +35,14 @@ cp swarm/.env.example swarm/.env      # then fill in SWARM_MODEL and your API ke
 # Test batches use cohort T, so they never mix with Cohort A's data.
 node swarm/run.mjs --url=https://your-app.vercel.app --cohort=T --agents=10
 
-# Cohort A: 300 agents arriving over 90 minutes
-node swarm/run.mjs --url=https://your-app.vercel.app --cohort=A --agents=300 --spread-minutes=90
+# Cohort A: 100 agents arriving over 30 minutes (fits Clerk's 100-user development limit)
+node swarm/run.mjs --url=https://your-app.vercel.app --cohort=A --agents=100 --spread-minutes=5 --concurrency=30
 
 # Return wave: about half of Cohort A comes back, using their saved sessions
-node swarm/run.mjs --url=https://your-app.vercel.app --return-wave=A --cohort-size=300
+node swarm/run.mjs --url=https://your-app.vercel.app --return-wave=A --cohort-size=100
 
 # Cohort B (after the fix ships behind the flag)
-node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=300 --spread-minutes=90
+node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team --spread-minutes=2 --concurrency=30
 ```
 
 | Flag | Default | Meaning |
@@ -55,8 +55,8 @@ node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=300 --s
 | `--max-usd` | 10 | Stop starting agents once this much has been spent |
 | `--model` | `SWARM_MODEL` | Override the model for one run, as `provider:model` |
 | `--return-wave` | off | Re-run about half of a cohort from saved sessions, starting at `/dashboard` |
-| `--cohort-size` | 300 | With `--return-wave`: how many agents the original cohort had |
-| `--only` | all | Run only some personas, by type or variant, for example `--only=builder` or `--only=builder-private,builder-team` |
+| `--cohort-size` | 100 | With `--return-wave`: how many agents the original cohort had |
+| `--only` | all | Run only some personas, by type or variant, for example `--only=builder` or `--only=builder-private,builder-team`. `--agents` still counts the agents that run: `--agents=90 --only=builder` runs 90 builders |
 | `--exclude` | none | Leave out personas by variant or type, for example `--exclude=builder-private,builder-team` for plain builders only |
 | `--seed` | 42 | Same seed, same personas |
 | `--headed` | off | Show the browsers (for debugging) |
@@ -87,16 +87,27 @@ shadcn/Radix dropdowns behave differently from a plain `<select>`, and two of th
 
 If builders rack up failed actions around a dropdown, suspect the harness before the product: a person wouldn't get stuck there.
 
+## Running faster
+
+Speed comes from how many agents run at once (`--concurrency`, default 10) and how close together they arrive (`--spread-minutes`). Cost doesn't change: you pay per model call, not per minute. `--concurrency=30` cuts the time to about a third. Before a real cohort, run a speed check at that concurrency with at least as many agents (`--cohort=T --agents=30 --concurrency=30`), then clean up, and watch each run's Reliability line: if API retries climb (the model provider is rate-limiting) or many sign-ups fail (Clerk's development instance is throttling), use 20. Each agent is a real Chrome page, so 30 at once wants 16 GB of RAM or more. The harness retries automatically, so results stay accurate; only the time grows. The short pauses between an agent's actions stay on purpose: they keep session replays watchable and the timing human.
+
+## Clerk's user limit
+
+Clerk development instances hold at most **100 users**, and every agent that signs up is one of them, as are your own test accounts. Before a cohort, run `node swarm/cleanup.mjs --yes` (it removes only `agent-*+clerk_test` accounts), and keep your own test accounts to five or fewer. Then:
+
+- **100 agents** fit: lurkers (5%) never sign up, so about 95 accounts are created.
+- **Builder-only batches** of `--agents=90 --only=builder --exclude=builder-private,builder-team` create 90 accounts each. For a bigger experiment, run several batches with a cleanup in between: PostHog keeps every batch's events, so the experiment adds them up.
+
 ## Element ids
 
 The page snapshot lists each element as `[0:12]`. Models answer with the id in different forms (`0:12`, `[0:12]`, `#0:12`, or just `12` for the main page), and the harness accepts all of them. If a new model shows many failed actions with 0 crashes, open a few traces in its `agents.jsonl` and check what it put in `target` before blaming the model.
 
 ## Retesting one part of the product
 
-To check a fix cheaply, run only the personas it affects. With `--agents=100 --only=builder` you get Cohort T's 25 builders (15 public, 5 private, 5 team) for about $0.15:
+To check a fix cheaply, run only the personas it affects. `--agents` counts the agents that run, so `--agents=10 --only=builder` runs 10 builders (6 public, 2 private, 2 team) for about $0.05:
 
 ```bash
-node swarm/run.mjs --url=https://your-app.vercel.app --cohort=T --agents=100 --only=builder
+node swarm/run.mjs --url=https://your-app.vercel.app --cohort=T --agents=10 --only=builder
 ```
 
 ## Is the model good enough?

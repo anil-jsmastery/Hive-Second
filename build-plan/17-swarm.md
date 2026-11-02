@@ -71,7 +71,7 @@ Local models are too slow for a swarm, so the harness uses a paid API, and **any
 | Provider | `SWARM_MODEL` | Key in `swarm/.env` | Watch out for |
 | --- | --- | --- | --- |
 | OpenAI | `openai:<model id>` | `SWARM_OPENAI_API_KEY` | New accounts start with low rate limits. Check your usage tier |
-| Anthropic (Claude) | `anthropic:<model id>`, for example `anthropic:claude-haiku-5-5` | `SWARM_ANTHROPIC_API_KEY` | Tier 1 allows 50 requests a minute per model. Use Tier 2 or higher for a 300-agent cohort |
+| Anthropic (Claude) | `anthropic:<model id>`, for example `anthropic:claude-haiku-5-5` | `SWARM_ANTHROPIC_API_KEY` | Tier 1 allows 50 requests a minute per model. For a 100-agent cohort, use Tier 2 or higher, or `--concurrency=5` |
 | Google Gemini | `gemini:<model id>` | `SWARM_GEMINI_API_KEY` | Use the paid tier for cohorts. Free-tier daily limits are too low |
 | DeepSeek | `deepseek:<model id>` | `SWARM_DEEPSEEK_API_KEY` | Turn thinking mode off. Check the price on the day you run |
 | Moonshot (Kimi) | `moonshot:<model id>` | `SWARM_MOONSHOT_API_KEY` | New accounts allow 1 request at a time. Too slow for a cohort |
@@ -109,6 +109,8 @@ Clerk development instances hold at most **100 users**, counting every agent tha
 - Run `node swarm/cleanup.mjs --yes` before every cohort, and keep your own test accounts to five or fewer.
 - Cohort A is **100 agents**: lurkers (5%) never sign up, so about 95 accounts are created.
 - Run the return wave **before** any cleanup: it signs back in as Cohort A's agents.
+
+**Running faster:** for the recorded run, use `--concurrency=30`. Before the real cohort, run a **speed check**: 30 test agents at once (`node swarm/run.mjs --cohort=T --agents=30 --concurrency=30 --url=<deployed URL>`, about 5 minutes, about $0.12), then `node swarm/cleanup.mjs --yes`. A 10-agent batch can't show what 30 at once does. If its Reliability line shows climbing API retries (the model provider is rate-limiting) or failed sign-ups (Clerk is throttling), use `--concurrency=20` instead. Then Cohort A: `--agents=100 --spread-minutes=5 --concurrency=30`, about 10 minutes, about $0.36. Cost doesn't depend on speed.
 
 ## Checks
 

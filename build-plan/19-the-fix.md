@@ -102,17 +102,19 @@ When every check passes, append the memory block below and commit as `step 19: t
 
    | Run | Command | Plain builders | Per variant |
    | --- | --- | --- | --- |
-   | Rehearsal | `--agents=160 --only=builder --exclude=builder-private,builder-team` | 24 | about 12 |
-   | Recorded video | `--agents=600 --only=builder --exclude=builder-private,builder-team`, **run twice** | 90 per batch, 180 in total | about 90 |
+   | Rehearsal | `--agents=24 --only=builder --exclude=builder-private,builder-team` | 24 | about 12 |
+   | Recorded video | `--agents=90 --only=builder --exclude=builder-private,builder-team`, **run twice** | 90 per batch, 180 in total | about 90 |
 
    Clerk's development instance holds at most 100 users, so the recorded run is two batches of 90 builders with a cleanup in between. PostHog keeps both batches' events, so the experiment counts all 180. At about 90 per variant, a difference like the rehearsal's (79% against 100%) is detected almost every time, and a smaller one (79% against 95%) about 9 times in 10. At 24 per variant those were about 6 and 3 times in 10.
 
    ```bash
    node swarm/cleanup.mjs --yes
-   node swarm/run.mjs --cohort=B --agents=600 --only=builder --exclude=builder-private,builder-team --spread-minutes=20 --url=<deployed URL>
+   node swarm/run.mjs --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team --spread-minutes=2 --concurrency=30 --url=<deployed URL>
    node swarm/cleanup.mjs --yes
-   node swarm/run.mjs --cohort=B --agents=600 --only=builder --exclude=builder-private,builder-team --spread-minutes=20 --url=<deployed URL>
+   node swarm/run.mjs --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team --spread-minutes=2 --concurrency=30 --url=<deployed URL>
    ```
+
+   `--agents` counts the agents that run, so each batch runs exactly 90 plain builders. At `--concurrency=30` a batch takes about 15 minutes and costs about $0.36 (about $0.72 for both). Use the concurrency that passed Step 17's speed check (30, or 20 if it showed retries or failed sign-ups).
 
    Keep "inconclusive, keep testing" as a possible and honest outcome, and keep the earlier runs and the sample decision visible: they're the proof the result wasn't cherry-picked.
 

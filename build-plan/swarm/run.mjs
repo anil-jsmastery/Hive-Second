@@ -3,8 +3,8 @@
 //   node swarm/run.mjs --url=https://your-app.vercel.app --cohort=A --agents=10
 //   node swarm/run.mjs --url=... --cohort=A --agents=300 --spread-minutes=90
 //   node swarm/run.mjs --url=... --return-wave=A --cohort-size=300
-//   node swarm/run.mjs --url=... --cohort=T --agents=40 --only=builder
-//   node swarm/run.mjs --url=... --cohort=B --agents=320 --only=builder --exclude=builder-private,builder-team
+//   node swarm/run.mjs --url=... --cohort=T --agents=10 --only=builder
+//   node swarm/run.mjs --url=... --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team
 //
 // Prints one line per agent. Details go to swarm/results/<run>-<start time>/.
 import fs from 'node:fs';
@@ -50,25 +50,31 @@ const specProblem = checkSpec(MODEL);
 if (specProblem) fail(specProblem);
 
 // ---------- personas ----------
+// --only=builder (or builder-private, consumer, ...) runs just those personas, and
+// --exclude=builder-private,builder-team leaves some out (by variant or type).
+const keep = (p) =>
+  (!ONLY || ONLY.includes(p.type) || ONLY.includes(p.variant)) &&
+  (!EXCLUDE || (!EXCLUDE.includes(p.variant) && !EXCLUDE.includes(p.type)));
+
 let personas;
 if (RETURN_OF) {
-  const cohortAgents = buildPersonas({ n: Number(arg['cohort-size'] || 300), cohort: RETURN_OF, seed: SEED })
+  const cohortAgents = buildPersonas({ n: Number(arg['cohort-size'] || 100), cohort: RETURN_OF, seed: SEED })
     .filter((p) => fs.existsSync(path.join(STATE_DIR, `${p.cohort}-${p.id}.json`)));
-  personas = returnWave(cohortAgents);
-  if (!personas.length) fail(`No saved sessions for cohort ${RETURN_OF} in swarm/state/. Run that cohort first.`);
+  personas = returnWave(cohortAgents).filter(keep);
+  if (!personas.length) fail(`No saved sessions for cohort ${RETURN_OF} in swarm/state/ that match the filters. Run that cohort first.`);
+} else if (ONLY || EXCLUDE) {
+  // --agents always counts the agents that run. With filters, build a bigger mix
+  // until enough personas pass them, then run exactly --agents of those.
+  let n = AGENTS;
+  personas = [];
+  for (let tries = 0; tries < 12 && personas.length < AGENTS; tries++) {
+    personas = buildPersonas({ n, cohort: COHORT, seed: SEED }).filter(keep);
+    n *= 2;
+  }
+  if (!personas.length) fail(`No personas match --only=${ONLY ? ONLY.join(',') : ''} --exclude=${EXCLUDE ? EXCLUDE.join(',') : ''}.`);
+  personas = personas.slice(0, AGENTS);
 } else {
   personas = buildPersonas({ n: AGENTS, cohort: COHORT, seed: SEED });
-}
-
-// --only=builder (or builder-private, consumer,...) runs just those personas.
-if (ONLY) {
-  personas = personas.filter((p) => ONLY.includes(p.type) || ONLY.includes(p.variant));
-  if (!personas.length) fail(`No personas match --only=${ONLY.join(',')}.`);
-}
-// --exclude=builder-private,builder-team leaves out personas by variant (or type).
-if (EXCLUDE) {
-  personas = personas.filter((p) => !EXCLUDE.includes(p.variant) && !EXCLUDE.includes(p.type));
-  if (!personas.length) fail(`--exclude=${EXCLUDE.join(',')} left no personas.`);
 }
 
 // Spread arrivals: each agent gets a start time within the window, never all at once.
@@ -326,7 +332,7 @@ const summary = {
   model: MODEL,
   // The settings this run used, so the next cohort can match them exactly.
   settings: {
-    agents: RETURN_OF ? Number(arg['cohort-size'] || 300) : AGENTS,
+    agents: RETURN_OF ? Number(arg['cohort-size'] || 100) : AGENTS,
     spreadMinutes: SPREAD_MIN,
     concurrency: CONCURRENCY,
     seed: SEED,
