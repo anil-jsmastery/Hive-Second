@@ -69,3 +69,6 @@ Never edit earlier blocks.
 - Stack, Publish as and Visibility are native controls (select and radios) whose values live in React state, so they submit reliably and survive a failed submit.
 - app/publish/actions.ts publishSkill(variant, ...): validates with lib/validation.ts, checks plan features for private skills (returns paywall), publishes as team via ensureOrganization() when owner=team, sends skill_published.
 - lib/organization.ts ensureOrganization() upserts the active Clerk organization into Supabase and identifies the PostHog group.
+
+## After step 12
+- /u/[handle]: profile header, follower counts, Follow button (toggleFollow, not tracked on purpose), published skills.
