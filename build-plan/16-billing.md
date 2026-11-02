@@ -147,13 +147,34 @@ export async function POST(req: NextRequest) {
 
 **Restoring the draft after an upgrade.** On mount, when the URL has `upgraded=1` and `sessionStorage` holds `hive:publish-draft`, the publish form fills every field from the draft (Visibility stays Private), removes the draft from `sessionStorage`, removes `upgraded=1` from the URL with `router.replace` (no scroll), and shows the toast "Your plan is active. Your draft is back, ready to publish." It never publishes on its own: the user submits again. Without `upgraded=1`, a leftover draft is ignored and removed.
 
-**`PaywallDialog`** (shadcn `Dialog`, with `className="hive-dialog"` on the content so it looks like the design's sign-in card), opened whenever a submit returns `state.paywall`:
+**`PaywallDialog`** (shadcn `Dialog`), opened whenever a submit returns `state.paywall`. One centred column, like the design's sign-in card: the lock, the title, one line of text, the plan, then the two buttons, full width. Its look comes from the `.hive-dialog.paywall` rules in DESIGN.md's `hive-night-app.css`. The content, **VERBATIM** (`LockIcon` from `components/night/icons.tsx`; shadcn's close button stays in the top-right corner):
 
-- Title: "Private skills are a paid feature".
-- Body: for `private_skills`, "Upgrade to Pro to publish skills only you can see." For `team_private_skills`, "Upgrade your team to Team to publish skills only your team can see."
-- A highlight box (`.side-card` with ember text): "Pro: $8/month" or "Team: $20/month".
-- `btn-ember` button "See plans". Before leaving, it saves the current form values (with Visibility set to Private) to `sessionStorage` under the key `hive:publish-draft`, then goes to `/pricing?tab=personal&from=publish` or `/pricing?tab=team&from=publish`.
-- `btn-ghost` button "Publish as public instead": sets Visibility to Public and closes the dialog (the user submits again).
+```tsx
+<DialogContent className="hive-dialog paywall">
+  <div className="paywall-head">
+    <span className="paywall-icon"><LockIcon /></span>
+    <DialogTitle className="paywall-title">Private skills are a paid feature</DialogTitle>
+    <DialogDescription className="paywall-sub">{body}</DialogDescription>
+  </div>
+  <div className="paywall-plan">
+    <span className="paywall-plan-name">{plan}</span>
+    <span className="paywall-plan-price"><b>{price}</b>/month</span>
+  </div>
+  <div className="paywall-actions">
+    <button type="button" className="btn-ember">See plans</button>
+    <button type="button" className="btn-ghost">Publish as public instead</button>
+  </div>
+</DialogContent>
+```
+
+| Value | Personal (`private_skills`) | Team (`team_private_skills`) |
+| --- | --- | --- |
+| `body` | "Upgrade to Pro to publish skills only you can see." | "Upgrade your team to Team to publish skills only your team can see." |
+| `plan` | "Pro" | "Team" |
+| `price` | "$8" | "$20" |
+
+- **"See plans":** before leaving, it saves the current form values (with Visibility set to Private) to `sessionStorage` under the key `hive:publish-draft`, then goes to `/pricing?tab=personal&from=publish` or `/pricing?tab=team&from=publish`.
+- **"Publish as public instead":** sets Visibility to Public and closes the dialog (the user submits again).
 - Each time it opens, it sends `trackClient('paywall_shown', { feature })` once.
 
 ## Check against your own Clerk instance
@@ -167,6 +188,7 @@ export async function POST(req: NextRequest) {
 ## Checks
 
 - Signed in without a plan, publishing a Private skill opens the paywall and sends `paywall_shown` with `feature: private_skills`. Nothing is published.
+- The paywall is one centred column at most 420px wide: the lock, the title, the text, the plan box (Pro, $8/month), then "See plans" and "Publish as public instead" as two full-width 44px buttons, on a phone too.
 - After the paywall opens, Publish as, Stack and Visibility still show what you chose, and the text fields keep their values.
 - "See plans" opens the "For you" tab (URL includes `from=publish`) and sends `pricing_viewed` with `tab: personal`.
 - After paying from the paywall, checkout returns to `/publish` with every field restored, Visibility on Private and the toast showing. Nothing is published until you submit.

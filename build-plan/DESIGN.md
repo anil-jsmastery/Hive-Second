@@ -100,6 +100,33 @@ code, kbd, pre, samp { font-family: var(--mono); }
 .note-btn:hover .note-text b { color: var(--ember-soft); }
 .dash .notes li:not(.unread) .note-btn .note-text { color: #8C8170; }
 
+/* Paywall dialog (Step 16): one centred column, like the design's sign-in card.
+   Overrides shadcn DialogContent's own grid and width. */
+.hive-dialog.paywall {
+  display: flex !important; flex-direction: column; gap: 20px;
+  width: min(420px, calc(100% - 32px)) !important; max-width: none !important;
+  padding: 32px 28px 28px !important;
+}
+.paywall-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.paywall-icon {
+  width: 44px; height: 44px; margin-bottom: 4px; border-radius: 12px; display: grid; place-items: center;
+  color: var(--ember); background: rgba(246,166,35,.1); box-shadow: inset 0 0 0 1px rgba(246,166,35,.3);
+}
+.paywall-icon svg { width: 20px; height: 20px; }
+.paywall-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--text); }
+.paywall-sub { margin: 0; max-width: 32ch; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.paywall-plan {
+  display: flex; align-items: baseline; justify-content: space-between; padding: 14px 16px;
+  border-radius: 12px; border: 1px solid rgba(246,166,35,.35); background: rgba(246,166,35,.06);
+}
+.paywall-plan-name { font-weight: 600; color: var(--ember-soft); }
+.paywall-plan-price { font-size: 14px; color: var(--muted); }
+.paywall-plan-price b { margin-right: 2px; font-size: 18px; font-weight: 600; color: var(--text); }
+.paywall-actions { display: flex; flex-direction: column; gap: 10px; }
+.paywall-actions .btn-ember, .paywall-actions .btn-ghost {
+  width: 100%; height: 44px; padding: 0 18px; border-radius: 12px; font-size: 15px; justify-content: center;
+}
+
 /* Signed-out prompt under comments */
 .c-signin { margin-top: 20px; font-size: 14px; color: var(--muted); }
 .c-signin a { color: var(--ember-soft); font-weight: 500; }
@@ -181,7 +208,7 @@ Native elements with the design's classes, not shadcn's styled components. shadc
 
 | Need | Markup |
 | --- | --- |
-| Primary button or link | `className="btn-ember"`, plus the page-specific class from the design (`.cta`, `.d-install`, `.p-submit`, `.dash-cta`, `.cl-primary`) |
+| Primary button or link | `className="btn-ember"`, plus the page-specific class from the design (`.cta`, `.d-install`, `.p-submit`, `.dash-cta`, `.cl-primary`), or inside a container the design sizes (`.field`, `.d-actions`, `.c-row`). `.btn-ember` sets colour and glow only, **no size**: a `btn-ember` anywhere else needs its height, padding and radius in `hive-night-app.css` (like the paywall's) |
 | Secondary button | `className="btn-ghost"`. Pressed state with `aria-pressed="true"` (the star button) |
 | Icon-only button | `className="btn-ghost icon-btn"` with an `aria-label` |
 | Small text action | `className="link-btn"` |
@@ -200,7 +227,7 @@ Native elements with the design's classes, not shadcn's styled components. shadc
 | Private badge | `span.priv` with the lock icon from the design and the text "Private" |
 | Team badge | `span.tag` with the team name |
 | Stars | `span.stars` with the design's star icon and the count |
-| Avatar | `<AvatarInitial handle>` (`.av`), or Clerk's `<UserButton>` in the header |
+| Avatar | `<AvatarInitial handle>` (`.av`), or Clerk's `<UserButton>` in the header (inside the client component `<UserMenu>`, Step 06) |
 | Empty state | `<EmptyState>` (`.empty`, `.empty.small`) |
 | Count pill | `span.new-count` ("2 new"), `span.c-count` |
 | Card panel | `.panel` with `.panel-head`, `.side-card`, `.stat`, `.doc` |

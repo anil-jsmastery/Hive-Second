@@ -78,6 +78,33 @@ code, kbd, pre, samp { font-family: var(--mono); }
 .note-btn:hover .note-text b { color: var(--ember-soft); }
 .dash .notes li:not(.unread) .note-btn .note-text { color: #8C8170; }
 
+/* Paywall dialog (Step 16): one centred column, like the design's sign-in card.
+   Overrides shadcn DialogContent's own grid and width. */
+.hive-dialog.paywall {
+  display: flex !important; flex-direction: column; gap: 20px;
+  width: min(420px, calc(100% - 32px)) !important; max-width: none !important;
+  padding: 32px 28px 28px !important;
+}
+.paywall-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.paywall-icon {
+  width: 44px; height: 44px; margin-bottom: 4px; border-radius: 12px; display: grid; place-items: center;
+  color: var(--ember); background: rgba(246,166,35,.1); box-shadow: inset 0 0 0 1px rgba(246,166,35,.3);
+}
+.paywall-icon svg { width: 20px; height: 20px; }
+.paywall-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--text); }
+.paywall-sub { margin: 0; max-width: 32ch; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.paywall-plan {
+  display: flex; align-items: baseline; justify-content: space-between; padding: 14px 16px;
+  border-radius: 12px; border: 1px solid rgba(246,166,35,.35); background: rgba(246,166,35,.06);
+}
+.paywall-plan-name { font-weight: 600; color: var(--ember-soft); }
+.paywall-plan-price { font-size: 14px; color: var(--muted); }
+.paywall-plan-price b { margin-right: 2px; font-size: 18px; font-weight: 600; color: var(--text); }
+.paywall-actions { display: flex; flex-direction: column; gap: 10px; }
+.paywall-actions .btn-ember, .paywall-actions .btn-ghost {
+  width: 100%; height: 44px; padding: 0 18px; border-radius: 12px; font-size: 15px; justify-content: center;
+}
+
 /* Signed-out prompt under comments */
 .c-signin { margin-top: 20px; font-size: 14px; color: var(--muted); }
 .c-signin a { color: var(--ember-soft); font-weight: 500; }
@@ -110,6 +137,3 @@ code, kbd, pre, samp { font-family: var(--mono); }
 .cl-pricingTableCard__free_user .cl-btn:hover, .cl-pricingTableCard__free_org .cl-btn:hover {
   background: rgba(246,166,35,.1); box-shadow: inset 0 0 0 1px rgba(246,166,35,.8), 0 0 18px -4px rgba(246,166,35,.5);
 }
-
-/* Paywall: the plan price */
-.paywall-price { color: var(--ember); font-weight: 600; }
