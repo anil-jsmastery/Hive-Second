@@ -196,6 +196,7 @@ export async function POST(req: NextRequest) {
 - Opening `/pricing` directly and subscribing there leaves you on `/pricing` (no redirect).
 - Subscribe to Pro with test card `4242 4242 4242 4242`, any future expiry date and any CVC. The webhook log shows 200, and PostHog receives `subscription_started` with `plan: pro` and `payer: user`.
 - Publishing a Private skill now works: `skill_published` has `visibility: private`, and the skill is invisible when signed out.
+- With a team active in the header and Pro on your personal account, "Publish as: Personal" + "Private" publishes (Clerk's token holds only the team's features, so Step 11's `hasActivePro` checks your own subscription). Without Pro, the same choice shows the Pro paywall. Publishing as the team still needs the Team plan.
 - Creating a new team sends `organization_created`. Default free-plan webhook events send nothing.
 
 ## Update project memory
@@ -206,7 +207,7 @@ Append this block to the end of `MEMORY.md`, **VERBATIM**:
 ## After step 16
 - Clerk Billing: Pro (user, private_skills, $8) and Team (organization, team_private_skills, $20) on the development gateway.
 - /pricing with For you / For teams tabs (pricing_viewed). Header has a Pricing link.
-- Publish form: Visibility field and PaywallDialog (paywall_shown). publishSkill gates private skills with has({ feature }).
+- Publish form: Visibility field and PaywallDialog (paywall_shown). publishSkill gates private skills with has({ feature }), except a personal private skill while a team is active: the token then holds only team features, so it checks the user's Pro subscription through clerkClient().billing (Step 11's hasActivePro).
 - Upgrading from the paywall: "See plans" saves the draft to sessionStorage (hive:publish-draft) and opens /pricing?from=publish; only then does PricingTable redirect to /publish?upgraded=1, where the draft is restored. Direct visits to /pricing stay there after paying.
 - app/api/webhooks/clerk/route.ts verifies Clerk webhooks: organization.created (upsert + organization_created), subscriptionItem.active/canceled (subscription_started/canceled, free plans ignored).
 ```

@@ -43,7 +43,7 @@ Next.js (App Router, TypeScript), Tailwind CSS, shadcn/ui, Clerk (auth, organiza
 | Organization | `free_org` (default) | $0 | none | Public team skills |
 | Organization | `team` | $20/month | `team_private_skills` | Private team skills |
 
-Plan checks happen on the server with Clerk's `has({ feature })`. RLS controls who can see a row; billing controls who can create a private one.
+Plan checks happen on the server with Clerk's `has({ feature })`, with one exception: while a team is active, Clerk's session token carries only that team's features, so a personal Pro plan is invisible to `has()`. For a personal private skill published while a team is active, `publishSkill` asks Clerk for the user's own subscription (`clerkClient().billing.getUserBillingSubscription`) and allows it if the `pro` plan is active. RLS controls who can see a row; billing controls who can create a private one.
 
 ## Stacks
 

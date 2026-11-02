@@ -1,5 +1,5 @@
 'use server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { getCurrentProfile } from '@/lib/profile';
@@ -20,8 +20,15 @@ export type PublishState = {
 
 const FIELDS = ['title', 'description', 'stack', 'tags', 'content', 'visibility', 'owner'] as const;
 
+// While a team is active, Clerk's session token carries only the team's features, so
+// has() can't see a personal Pro plan. Ask Clerk for the user's own subscription instead.
+async function hasActivePro(userId: string) {
+  const subscription = await (await clerkClient()).billing.getUserBillingSubscription(userId);
+  return subscription.subscriptionItems.some((item) => item.status === 'active' && item.plan?.slug === 'pro');
+}
+
 export async function publishSkill(variant: Variant, _prev: PublishState, formData: FormData): Promise<PublishState> {
-  const { orgId, has } = await auth();
+  const { userId, orgId, has } = await auth();
   const profile = await getCurrentProfile();
   if (!profile) redirect('/sign-in?redirect_url=/publish');
 
@@ -41,7 +48,17 @@ export async function publishSkill(variant: Variant, _prev: PublishState, formDa
   // Billing decides who may create a private skill. RLS decides who may see it.
   if (visibility === 'private') {
     const feature = asTeam ? FEATURES.team : FEATURES.personal;
-    if (!has({ feature })) return { paywall: feature, values };
+    if (!asTeam && orgId && userId) {
+      let pro: boolean;
+      try {
+        pro = await hasActivePro(userId);
+      } catch {
+        return { formError: 'We couldn’t check your plan. Try again.', values };
+      }
+      if (!pro) return { paywall: feature, values };
+    } else if (!has({ feature })) {
+      return { paywall: feature, values };
+    }
   }
 
   const org = asTeam ? await ensureOrganization() : null;
