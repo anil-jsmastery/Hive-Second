@@ -336,6 +336,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dashboard_stats: { Args: never; Returns: Json }
       requesting_org_id: { Args: never; Returns: string }
       requesting_user_id: { Args: never; Returns: string }
       search_skills: {

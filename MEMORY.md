@@ -72,3 +72,7 @@ Never edit earlier blocks.
 
 ## After step 12
 - /u/[handle]: profile header, follower counts, Follow button (toggleFollow, not tracked on purpose), published skills.
+
+## After step 13
+- /dashboard (Hive Night dashboard view): four stats from dashboard_stats() (migration 0006, counts only) with sparklines; skills panel with tabs (Your skills, Forks) from skillRows(); Activity panel (openNotification marks read, sends notification_clicked, redirects; markAllNotificationsRead sends no event).
+- Header shows unreadCount() from lib/queries/notifications.ts after the Dashboard link.

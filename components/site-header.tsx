@@ -4,9 +4,11 @@ import { HiveMark } from '@/components/hive-mark';
 import { NavLink } from '@/components/nav-link';
 import { UserMenu } from '@/components/user-menu';
 import { getCurrentProfile } from '@/lib/profile';
+import { unreadCount } from '@/lib/queries/notifications';
 
 export async function SiteHeader() {
   const profile = await getCurrentProfile();
+  const unread = profile ? await unreadCount() : 0;
   return (
     <header className="site-header">
       <div className="bar-inner">
@@ -18,7 +20,9 @@ export async function SiteHeader() {
           <NavLink href="/explore">Explore</NavLink>
           <NavLink href="/publish">Publish</NavLink>
           <Show when="signed-in">
-            <NavLink href="/dashboard">Dashboard</NavLink>
+            <NavLink href="/dashboard">
+              Dashboard{unread ? <span className="new-count ml-1.5">{unread}</span> : null}
+            </NavLink>
           </Show>
         </nav>
         <div className="bar-right">
