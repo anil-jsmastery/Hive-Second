@@ -102,6 +102,14 @@ Results differ between models. That's expected: the code must match, the data do
 - Agents get goals, never click paths. Never tune a persona to fail at a specific step.
 - Persona prompts are public in the repo.
 
+## Clerk's user limit
+
+Clerk development instances hold at most **100 users**, counting every agent that signs up and your own test accounts. The swarm needs the development instance (its `+clerk_test` emails and code `424242`), so:
+
+- Run `node swarm/cleanup.mjs --yes` before every cohort, and keep your own test accounts to five or fewer.
+- Cohort A is **100 agents**: lurkers (5%) never sign up, so about 95 accounts are created.
+- Run the return wave **before** any cleanup: it signs back in as Cohort A's agents.
+
 ## Checks
 
 - `swarm/` matches `build-plan/swarm/` exactly (`diff -r build-plan/swarm swarm` shows only the new `.env`, `state/` and `results/`).

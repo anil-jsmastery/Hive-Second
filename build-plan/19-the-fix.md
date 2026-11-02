@@ -103,14 +103,20 @@ When every check passes, append the memory block below and commit as `step 19: t
    | Run | Command | Plain builders | Per variant |
    | --- | --- | --- | --- |
    | Rehearsal | `--agents=160 --only=builder --exclude=builder-private,builder-team` | 24 | about 12 |
-   | Recorded video | `--agents=320 --only=builder --exclude=builder-private,builder-team` | 48 | about 24 |
+   | Recorded video | `--agents=600 --only=builder --exclude=builder-private,builder-team`, **run twice** | 90 per batch, 180 in total | about 90 |
+
+   Clerk's development instance holds at most 100 users, so the recorded run is two batches of 90 builders with a cleanup in between. PostHog keeps both batches' events, so the experiment counts all 180. At about 90 per variant, a difference like the rehearsal's (79% against 100%) is detected almost every time, and a smaller one (79% against 95%) about 9 times in 10. At 24 per variant those were about 6 and 3 times in 10.
 
    ```bash
    node swarm/cleanup.mjs --yes
-   node swarm/run.mjs --cohort=B --agents=320 --only=builder --exclude=builder-private,builder-team --spread-minutes=20 --url=<deployed URL>
+   node swarm/run.mjs --cohort=B --agents=600 --only=builder --exclude=builder-private,builder-team --spread-minutes=20 --url=<deployed URL>
+   node swarm/cleanup.mjs --yes
+   node swarm/run.mjs --cohort=B --agents=600 --only=builder --exclude=builder-private,builder-team --spread-minutes=20 --url=<deployed URL>
    ```
 
-   Don't promote a subgroup you found *after* looking at the results: with enough slices, something always looks significant by chance. If a subgroup looks promising, make it the pre-declared sample of the next run, as above. `--spread-minutes` only changes when agents arrive, not the result; 20 minutes is plenty for 48 builders.
+   Keep "inconclusive, keep testing" as a possible and honest outcome, and keep the earlier runs and the sample decision visible: they're the proof the result wasn't cherry-picked.
+
+   Don't promote a subgroup you found *after* looking at the results: with enough slices, something always looks significant by chance. If a subgroup looks promising, make it the pre-declared sample of the next run, as above. `--spread-minutes` only changes when agents arrive, not the result.
 
    **Check the instrument before trusting the result.** In the run's `agents.jsonl`, builders who got stuck should be stuck on the product, not on the harness. If stuck builders have many failed actions around one control (a dropdown, say) and builders who published have none, the harness is distorting the experiment: fix the harness, restart the experiment's clock and run Cohort B again.
 4. **Read the result** in PostHog (the experiment, or through the PostHog MCP server): `skill_published` divided by `publish_started` for control and for test, and whether the difference is significant.
