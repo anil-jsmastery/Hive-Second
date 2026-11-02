@@ -76,3 +76,8 @@ Never edit earlier blocks.
 ## After step 13
 - /dashboard (Hive Night dashboard view): four stats from dashboard_stats() (migration 0006, counts only) with sparklines; skills panel with tabs (Your skills, Forks) from skillRows(); Activity panel (openNotification marks read, sends notification_clicked, redirects; markAllNotificationsRead sends no event).
 - Header shows unreadCount() from lib/queries/notifications.ts after the Dashboard link.
+
+## After step 14
+- Clerk organizations are Hive teams. OrganizationSwitcher in the header (personal accounts allowed, slugs on).
+- /o/[slug] team page (skill-view header pattern). Publish as personal or team (native owner select). Dashboard panel gets a "Team: {name}" tab when a team is active.
+- Team actions carry the PostHog organization group (client group + server orgId + identifyOrganization).

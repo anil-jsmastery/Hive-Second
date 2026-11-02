@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Show, SignInButton } from '@clerk/nextjs';
+import { OrganizationSwitcher, Show, SignInButton } from '@clerk/nextjs';
 import { HiveMark } from '@/components/hive-mark';
 import { NavLink } from '@/components/nav-link';
 import { UserMenu } from '@/components/user-menu';
@@ -25,13 +25,20 @@ export async function SiteHeader() {
             </NavLink>
           </Show>
         </nav>
-        <div className="bar-right">
+        <div className="bar-right gap-4">
           <Show when="signed-out">
             <SignInButton>
               <button type="button" className="signin">Sign in</button>
             </SignInButton>
           </Show>
           <Show when="signed-in">
+            <OrganizationSwitcher
+              hidePersonal={false}
+              afterCreateOrganizationUrl="/dashboard"
+              afterSelectOrganizationUrl="/dashboard"
+              afterSelectPersonalUrl="/dashboard"
+              appearance={{ elements: { organizationSwitcherTrigger: 'org' } }}
+            />
             <UserMenu handle={profile?.handle ?? null} />
           </Show>
         </div>

@@ -6,7 +6,7 @@ import { ChevronIcon, ForkIcon, LockIcon, StarIcon } from '@/components/night/ic
 import type { SkillRow } from '@/lib/queries/dashboard';
 import { timeAgo } from '@/lib/time';
 
-type Tab = 'skills' | 'forks';
+type Tab = 'skills' | 'forks' | 'team';
 
 function Row({ s }: { s: SkillRow }) {
   const sub = s.forked_from
@@ -32,10 +32,16 @@ function Row({ s }: { s: SkillRow }) {
   );
 }
 
-// The dashboard's left panel: your skills and your forks, switched with tabs.
-export function SkillsPanel({ skills, forks }: { skills: SkillRow[]; forks: SkillRow[] }) {
-  const [tab, setTab] = useState<Tab>('skills');
-  const list = tab === 'skills' ? skills : forks;
+// The dashboard's left panel: your skills, your forks and, when a team is active,
+// the team's skills, switched with tabs.
+export function SkillsPanel({ skills, forks, team }: {
+  skills: SkillRow[];
+  forks: SkillRow[];
+  team: { name: string; skills: SkillRow[] } | null;
+}) {
+  const [selected, setTab] = useState<Tab>('skills');
+  const tab = selected === 'team' && !team ? 'skills' : selected;
+  const list = tab === 'skills' ? skills : tab === 'forks' ? forks : team?.skills ?? [];
   return (
     <section className="panel" aria-label="Your skills and forks">
       <div className="panel-head">
@@ -46,6 +52,11 @@ export function SkillsPanel({ skills, forks }: { skills: SkillRow[]; forks: Skil
           <button type="button" role="tab" aria-selected={tab === 'forks'} onClick={() => setTab('forks')}>
             Forks <span className="tab-n">{forks.length}</span>
           </button>
+          {team ? (
+            <button type="button" role="tab" aria-selected={tab === 'team'} onClick={() => setTab('team')}>
+              Team: {team.name} <span className="tab-n">{team.skills.length}</span>
+            </button>
+          ) : null}
         </div>
       </div>
       <ul className="srows">
@@ -53,6 +64,11 @@ export function SkillsPanel({ skills, forks }: { skills: SkillRow[]; forks: Skil
           <li className="srows-empty">
             <strong>No skills yet</strong>
             You haven’t published a skill yet. <Link href="/publish">Publish a skill</Link>
+          </li>
+        ) : tab === 'team' ? (
+          <li className="srows-empty">
+            <strong>No team skills yet</strong>
+            Publish a skill as your team to see it here. <Link href="/publish">Publish a skill</Link>
           </li>
         ) : (
           <li className="srows-empty">

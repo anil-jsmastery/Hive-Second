@@ -7,6 +7,7 @@ import { SkillsPanel } from '@/components/dashboard/skills-panel';
 import { NotificationList } from '@/components/dashboard/notification-list';
 import { markAllNotificationsRead } from '@/app/dashboard/actions';
 import { getCurrentProfile } from '@/lib/profile';
+import { ensureOrganization } from '@/lib/organization';
 import { dashboardStats, skillRows, type StatKey } from '@/lib/queries/dashboard';
 import { listNotifications } from '@/lib/queries/notifications';
 
@@ -21,11 +22,13 @@ export default async function DashboardPage() {
   const me = await getCurrentProfile();
   if (!me) redirect('/sign-in?redirect_url=/dashboard');
 
-  const [stats, skills, forks, notifications] = await Promise.all([
+  const org = await ensureOrganization();
+  const [stats, skills, forks, notifications, teamSkills] = await Promise.all([
     dashboardStats(),
     skillRows({ authorId: me.id, forks: false }),
     skillRows({ authorId: me.id, forks: true }),
     listNotifications(),
+    org ? skillRows({ orgId: org.id }) : Promise.resolve([]),
   ]);
   const unread = notifications.filter((n) => !n.read_at).length;
 
@@ -54,7 +57,7 @@ export default async function DashboardPage() {
         })}
       </div>
       <div className="dash-grid">
-        <SkillsPanel skills={skills} forks={forks} />
+        <SkillsPanel skills={skills} forks={forks} team={org ? { name: org.name, skills: teamSkills } : null} />
         <aside className="panel" aria-label="Activity">
           <div className="panel-head">
             <h2>Activity {unread ? <span className="new-count">{unread} new</span> : null}</h2>

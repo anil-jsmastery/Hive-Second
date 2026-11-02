@@ -32,7 +32,7 @@ What the agent should hand back when it's done.`;
 
 // The publish view: the form on the left, a live Explore card preview on the right.
 // Submits through onSubmit so React never resets the fields after a failed submit.
-export function PublishForm({ variant }: { variant: Variant }) {
+export function PublishForm({ variant, teamName }: { variant: Variant; teamName: string | null }) {
   const [state, formAction] = useActionState<PublishState, FormData>(publishSkill.bind(null, variant), {});
   const [pending, startTransition] = useTransition();
   const { user } = useUser();
@@ -40,6 +40,7 @@ export function PublishForm({ variant }: { variant: Variant }) {
   const [title, setTitle] = useState(state.values?.title ?? '');
   const [description, setDescription] = useState(state.values?.description ?? '');
   const [stack, setStack] = useState(state.values?.stack ?? '');
+  const [owner, setOwner] = useState(state.values?.owner || 'personal');
   const [tags, setTags] = useState(state.values?.tags ?? '');
   const [content, setContent] = useState(state.values?.content ?? '');
   const [tab, setTab] = useState<'write' | 'preview'>('write');
@@ -67,6 +68,17 @@ export function PublishForm({ variant }: { variant: Variant }) {
           <p className="hint">Your skill will live at <code>/s/{slug}</code></p>
           <p className="err-msg">{err('title')}</p>
         </div>
+
+        {teamName ? (
+          <div className="fld">
+            <label htmlFor="p-owner">Publish as</label>
+            <select className="inp" id="p-owner" name="owner" value={owner} onChange={(e) => setOwner(e.target.value)}>
+              <option value="personal">Personal (@{user?.username ?? ''})</option>
+              <option value="team">{teamName}</option>
+            </select>
+            <p className="hint">Team skills show your team’s name and live on its team page.</p>
+          </div>
+        ) : null}
 
         <div className={fld('description')}>
           <label htmlFor="p-desc">Description</label>
