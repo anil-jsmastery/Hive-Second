@@ -22,11 +22,11 @@
 1. Keep the **development instance**. It works on the Vercel URL (you'll see Clerk's "development mode" badge), and the swarm needs its test emails and test payment gateway. Moving to a production instance is out of scope for this build.
 
 **PostHog**
-1. **Turn off autocapture.** Go to Project → Autocapture & heatmaps and switch **Autocapture** off. Leave **Heatmaps** on.
-2. **Check session replay is on.** Go to Session replay and make sure recording is on, so every session is recorded.
-3. **Turn on exception autocapture.** Go to Error tracking and switch **Exception autocapture** on.
-4. **Add the swarm filter.** Go to Project → Product analytics, find **Filter out internal and test users**, and click **Add filter**.
-   - Choose **Event properties**, then type `cohort` and pick it. It may not appear in the list yet, because no swarm traffic has set it; typing the name usually lets you add it anyway.
+1. **Turn off autocapture.** Go to **Settings → Project → Autocapture** and switch **Enable autocapture for web** off (Hive's code already sets `autocapture: false`; this makes it a project rule too). Leave web vitals autocapture off. Then in **Settings → Products → Heatmaps**, make sure heatmaps are on.
+2. **Check session replay is on.** Go to **Settings → Products → Session replay** and make sure recording is on, so every session is recorded.
+3. **Turn on exception autocapture.** Go to **Settings → Products → Error tracking** and switch **Exception autocapture** on.
+4. **Add the swarm filter** (after the deploy, because it needs the live site for the setup visit below). Go to **Settings → Project → Customization** and find **Filter out internal and test users** (or type "internal" in the settings search box, or open `/settings/project#internal-user-filtering`). It's the section that already lists the "Internal / Test users" filter. Click **Add filter**.
+   - Choose **Event properties**, then type `cohort` and pick it. **If it's not listed** ("No results"), PostHog hasn't seen it yet, because no swarm traffic has arrived. Teach it with one visit: open a **private window**, visit `/?swarm=setup` on the live site (that registers `cohort: swarm-setup` and sends one page view), close the window, wait a minute or two and refresh this page. Private matters: the tag sticks to that browser. The test visit is hidden by this filter too.
    - Set the operator to **doesn't match regex** and the value to `^swarm`. PostHog has no "starts with" operator, and this filter keeps the events that pass it, so "doesn't match `^swarm`" removes every event whose `cohort` starts with `swarm`. Events without a `cohort` (human traffic) still pass.
    - Leave the existing "Internal / Test users" cohort filter as it is.
    - Leave **Enable this filter on all new insights** unchecked. It stays off by default, and Step 17 turns it on per insight.
