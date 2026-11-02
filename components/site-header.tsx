@@ -18,6 +18,7 @@ export async function SiteHeader() {
         </Link>
         <nav className="nav-links" aria-label="Main">
           <NavLink href="/explore">Explore</NavLink>
+          <NavLink href="/pricing">Pricing</NavLink>
           <NavLink href="/publish">Publish</NavLink>
           <Show when="signed-in">
             <NavLink href="/dashboard">

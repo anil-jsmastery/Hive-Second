@@ -1,10 +1,13 @@
 'use client';
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import { toast } from 'sonner';
 import { publishSkill, type PublishField, type PublishState } from '@/app/publish/actions';
 import { Markdown } from '@/components/skill/markdown';
 import { SkillGlyph } from '@/components/night/skill-glyph';
-import { StarIcon } from '@/components/night/icons';
+import { LockIcon, StarIcon } from '@/components/night/icons';
+import { DRAFT_KEY, PaywallDialog } from '@/components/billing/paywall-dialog';
 import type { Variant } from '@/lib/analytics/events';
 import { STACKS } from '@/lib/constants';
 import { slugify } from '@/lib/slug';
@@ -36,6 +39,11 @@ export function PublishForm({ variant, teamName }: { variant: Variant; teamName:
   const [state, formAction] = useActionState<PublishState, FormData>(publishSkill.bind(null, variant), {});
   const [pending, startTransition] = useTransition();
   const { user } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const upgraded = searchParams.get('upgraded') === '1';
+  const restored = useRef(false);
 
   const [title, setTitle] = useState(state.values?.title ?? '');
   const [description, setDescription] = useState(state.values?.description ?? '');
@@ -43,7 +51,38 @@ export function PublishForm({ variant, teamName }: { variant: Variant; teamName:
   const [owner, setOwner] = useState(state.values?.owner || 'personal');
   const [tags, setTags] = useState(state.values?.tags ?? '');
   const [content, setContent] = useState(state.values?.content ?? '');
+  const [visibility, setVisibility] = useState(state.values?.visibility || 'public');
   const [tab, setTab] = useState<'write' | 'preview'>('write');
+  // The paywall opens for every submit that returns one, until it's closed.
+  const [closedFor, setClosedFor] = useState<PublishState | null>(null);
+  const paywall = state.paywall && closedFor !== state ? state.paywall : null;
+
+  // Back from checkout: restore the draft "See plans" saved. Never publishes on its own.
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(DRAFT_KEY);
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    if (!upgraded) return;
+    if (raw) {
+      const draft = JSON.parse(raw) as Record<string, string>;
+      setTitle(draft.title ?? '');
+      setDescription(draft.description ?? '');
+      setStack(draft.stack ?? '');
+      setOwner(draft.owner || 'personal');
+      setTags(draft.tags ?? '');
+      setContent(draft.content ?? '');
+      setVisibility('private');
+      toast('Your plan is active. Your draft is back, ready to publish.');
+    }
+    const params = new URLSearchParams(window.location.search);
+    params.delete('upgraded');
+    const rest = params.toString();
+    router.replace(rest ? `${pathname}?${rest}` : pathname, { scroll: false });
+  }, [upgraded, pathname, router]);
 
   const slug = slugify(title.trim()) || 'your-skill';
   const rawTags = tags.split(',').map((t) => t.trim()).filter(Boolean);
@@ -105,6 +144,30 @@ export function PublishForm({ variant, teamName }: { variant: Variant; teamName:
           <p className="err-msg">{err('tags')}</p>
         </div>
 
+        <fieldset className="fld">
+          <legend className="lbl">Visibility</legend>
+          <div className="vis">
+            <label className="vis-opt">
+              <input type="radio" name="visibility" value="public" checked={visibility === 'public'} onChange={() => setVisibility('public')} />
+              <span className="radio" />
+              <span>
+                <span className="vis-title">Public</span>
+                <span className="vis-sub">Anyone can find and install it.</span>
+              </span>
+            </label>
+            <label className="vis-opt">
+              <input type="radio" name="visibility" value="private" checked={visibility === 'private'} onChange={() => setVisibility('private')} />
+              <span className="radio" />
+              <span>
+                <span className="vis-title"><LockIcon />Private <span className="pro">{owner === 'team' ? 'Team' : 'Pro'}</span></span>
+                <span className="vis-sub">
+                  {owner === 'team' ? 'Only your team can see it. Needs Team.' : 'Only you can see it. Needs Pro.'}
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
         <div className={fld('content')}>
           <span className="lbl" id="content-lbl">Skill content</span>
           <div className="editor">
@@ -144,6 +207,16 @@ export function PublishForm({ variant, teamName }: { variant: Variant; teamName:
           <button type="submit" className="btn-ember p-submit" disabled={pending}>{pending ? 'Publishing…' : 'Publish skill'}</button>
         </div>
       </form>
+
+      <PaywallDialog
+        feature={paywall}
+        draft={{ title, description, stack, owner, tags, content }}
+        onClose={() => setClosedFor(state)}
+        onPublicInstead={() => {
+          setVisibility('public');
+          setClosedFor(state);
+        }}
+      />
 
       <aside className="p-aside" aria-label="Card preview">
         <p className="aside-lbl">How it will look in Explore</p>
