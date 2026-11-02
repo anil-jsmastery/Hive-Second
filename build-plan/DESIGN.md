@@ -101,11 +101,16 @@ code, kbd, pre, samp { font-family: var(--mono); }
 .dash .notes li:not(.unread) .note-btn .note-text { color: #8C8170; }
 
 /* Paywall dialog (Step 16): one centred column, like the design's sign-in card.
-   Overrides shadcn DialogContent's own grid and width. */
+   It positions and sizes itself completely, so shadcn DialogContent's own
+   width, grid and transform classes can't push it off a small screen. */
 .hive-dialog.paywall {
+  position: fixed !important; left: 50% !important; top: 50% !important;
+  transform: translate(-50%, -50%) !important; margin: 0 !important;
+  box-sizing: border-box !important;
+  width: calc(100vw - 32px) !important; max-width: 420px !important;
+  max-height: calc(100dvh - 32px) !important; overflow-y: auto;
   display: flex !important; flex-direction: column; gap: 20px;
-  width: min(420px, calc(100% - 32px)) !important; max-width: none !important;
-  padding: 32px 28px 28px !important;
+  padding: 32px 24px 24px !important;
 }
 .paywall-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .paywall-icon {
@@ -113,18 +118,43 @@ code, kbd, pre, samp { font-family: var(--mono); }
   color: var(--ember); background: rgba(246,166,35,.1); box-shadow: inset 0 0 0 1px rgba(246,166,35,.3);
 }
 .paywall-icon svg { width: 20px; height: 20px; }
-.paywall-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--text); }
+.paywall-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--text); overflow-wrap: anywhere; }
 .paywall-sub { margin: 0; max-width: 32ch; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
 .paywall-plan {
-  display: flex; align-items: baseline; justify-content: space-between; padding: 14px 16px;
-  border-radius: 12px; border: 1px solid rgba(246,166,35,.35); background: rgba(246,166,35,.06);
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px;
+  padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(246,166,35,.35); background: rgba(246,166,35,.06);
 }
 .paywall-plan-name { font-weight: 600; color: var(--ember-soft); }
-.paywall-plan-price { font-size: 14px; color: var(--muted); }
+.paywall-plan-price { font-size: 14px; color: var(--muted); white-space: nowrap; }
 .paywall-plan-price b { margin-right: 2px; font-size: 18px; font-weight: 600; color: var(--text); }
 .paywall-actions { display: flex; flex-direction: column; gap: 10px; }
 .paywall-actions .btn-ember, .paywall-actions .btn-ghost {
   width: 100%; height: 44px; padding: 0 18px; border-radius: 12px; font-size: 15px; justify-content: center;
+  text-align: center;
+}
+@media (max-width: 360px) {
+  .hive-dialog.paywall { padding: 28px 18px 18px !important; gap: 16px; }
+  .paywall-title { font-size: 18px; }
+}
+
+/* Responsive guards for things the design file doesn't cover (DESIGN.md › Responsive) */
+img, video { max-width: 100%; height: auto; }
+.md { overflow-wrap: anywhere; }
+.md pre {
+  max-width: 100%; overflow-x: auto; margin: 16px 0; padding: 14px 16px; border-radius: 10px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--line); font-size: 13px; line-height: 1.55;
+}
+.md pre code { background: none; padding: 0; color: var(--text); font-size: inherit; overflow-wrap: normal; }
+.md table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 16px 0; }
+.md th, .md td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; }
+.cl-rootBox, .cl-cardBox { max-width: calc(100vw - 32px); }
+[data-sonner-toast].hive-toast { max-width: calc(100vw - 32px); }
+.p-counts { flex-wrap: wrap; }
+.bar-right { min-width: 0; }
+.bar-right .org { min-width: 0; max-width: 40vw; overflow: hidden; }
+.bar-right .org * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) {
+  .bar-right .cl-organizationPreviewTextContainer { display: none; }
 }
 
 /* Signed-out prompt under comments */
@@ -236,6 +266,20 @@ Native elements with the design's classes, not shadcn's styled components. shadc
 | Icons | the design's inline SVGs (star, fork, link, install, back, check, lock, plus, chevron). Use lucide only where the design has no icon |
 
 **SkillCard** (`.skill`, the whole card is one link to `/s/[slug]`): `.skill-top` with `span.glyph` + `SkillGlyph` and `.skill-name` (`h2` title, `.author` "@{handle}", or "forked from @{handle}" for a fork); then the description `p`; then `.meta` with the stack `.fw`, the team badge, the private badge, the tags and `.stars` on the right. Hover and focus lift the card, light its emblem and fill the star, all from the design CSS.
+
+## Responsive
+
+Every page and dialog must work from a 320px phone to a wide desktop. The design CSS already handles the page layouts, with breakpoints at 1060, 960, 900, 820, 760, 640, 560 and 480px: two-column pages stack, grids drop columns, the header shrinks. The responsive guards in `hive-night-app.css` cover what the design file doesn't show: code blocks, tables and images inside skill content, Clerk's card and team switcher, toasts, profile counts, and the paywall.
+
+**Rules for anything new** (a component, a dialog, a style in `hive-night-app.css`):
+
+- Never fixed widths wider than the screen: use `max-width: 100%`, or `calc(100vw - 32px)` for overlays.
+- Flex and grid children that hold text get `min-width: 0`, so they can shrink. Long text wraps (`overflow-wrap: anywhere`) or ends in an ellipsis.
+- Wide content (code, tables) scrolls inside its own box (`overflow-x: auto`), never the whole page.
+- A dialog or overlay positions and sizes itself (`position: fixed`, centred with `transform`, `width: calc(100vw - 32px)`, a `max-width`, and `max-height: calc(100dvh - 32px)` with `overflow-y: auto`), like the paywall, instead of relying on a library's classes.
+- Buttons and tappable rows stay at least 40px tall on phones.
+
+**The check, for every page and dialog:** at **320px, 390px, 768px and 1280px** wide, `document.documentElement.scrollWidth <= window.innerWidth` (no sideways scroll), and nothing is cut off or overlapping. Look at least at 390px and 1280px yourself, next to the same view in `design/hive-night.html`.
 
 ## Motion
 

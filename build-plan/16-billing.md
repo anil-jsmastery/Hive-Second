@@ -187,8 +187,9 @@ export async function POST(req: NextRequest) {
 
 ## Checks
 
+- At 320px and 390px wide, the page has no sideways scroll and nothing is cut off or overlapping (DESIGN.md › Responsive).
 - Signed in without a plan, publishing a Private skill opens the paywall and sends `paywall_shown` with `feature: private_skills`. Nothing is published.
-- The paywall is one centred column at most 420px wide: the lock, the title, the text, the plan box (Pro, $8/month), then "See plans" and "Publish as public instead" as two full-width 44px buttons, on a phone too.
+- The paywall is one centred column at most 420px wide, with 16px of space on each side on a phone: the lock, the title, the text, the plan box (Pro, $8/month), then "See plans" and "Publish as public instead" as two full-width 44px buttons. Check it at 320px, 390px and 1280px: nothing is cut off.
 - After the paywall opens, Publish as, Stack and Visibility still show what you chose, and the text fields keep their values.
 - "See plans" opens the "For you" tab (URL includes `from=publish`) and sends `pricing_viewed` with `tab: personal`.
 - After paying from the paywall, checkout returns to `/publish` with every field restored, Visibility on Private and the toast showing. Nothing is published until you submit.
