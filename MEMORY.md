@@ -62,3 +62,10 @@ Never edit earlier blocks.
 ## After step 10
 - forkSkill (public skills only, forks are public and personal, skill_forked) and postComment (1–500 chars, comment_posted) in app/s/[slug]/actions.ts.
 - Comments section on the skill page. Notifications and activities for forks and comments come from triggers.
+
+## After step 11
+- /publish: PublishForm (useActionState) with title, description, stack, tags, Write/Preview content. publish_started on mount.
+- PublishForm (Hive Night publish view: form plus live card preview) submits through onSubmit + startTransition(formAction), never the form's action prop.
+- Stack, Publish as and Visibility are native controls (select and radios) whose values live in React state, so they submit reliably and survive a failed submit.
+- app/publish/actions.ts publishSkill(variant, ...): validates with lib/validation.ts, checks plan features for private skills (returns paywall), publishes as team via ensureOrganization() when owner=team, sends skill_published.
+- lib/organization.ts ensureOrganization() upserts the active Clerk organization into Supabase and identifies the PostHog group.
