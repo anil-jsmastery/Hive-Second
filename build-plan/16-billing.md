@@ -41,7 +41,7 @@
 
    For Team, add the feature from the **New feature** tab of the Add feature dialog, keep **Publicly available** on, and ignore the Roles & Permissions note (any team member may publish private team skills). Don't tick **Private skills** under Available features: that's Pro's feature, and team subscriptions are checked against `team_private_skills`.
 
-   The keys matter more than the names: the code checks them exactly.
+   The keys matter more than the names: the code checks them exactly. **Watch the Team feature's key:** Clerk fills the key in from the name, so "Private team skills" becomes `private_team_skills`. Replace it with `team_private_skills` before saving. With the wrong key, a team that has paid for Team still hits the paywall, because the token lists `private_team_skills` and the code asks for `team_private_skills`.
 4. **Developers → Webhooks → Add endpoint:** `https://<your-vercel-url>/api/webhooks/clerk`, subscribed to `organization.created`, `subscriptionItem.active` and `subscriptionItem.canceled`. Copy the signing secret into Vercel and `.env.local` as `CLERK_WEBHOOK_SIGNING_SECRET`, then redeploy.
 
 ## Files
@@ -88,10 +88,12 @@ function readSubscriptionItem(data: unknown) {
     plan?: { slug?: string; key?: string };
     payer?: { user_id?: string | null; organization_id?: string | null };
   };
+  // Clerk sends an empty string (not null) for the id that doesn't apply: a team payer
+  // has user_id "". Use || so empty strings become null too.
   return {
-    plan: String(d.plan?.slug ?? d.plan?.key ?? 'unknown'),
-    userId: d.payer?.user_id ?? null,
-    orgId: d.payer?.organization_id ?? null,
+    plan: String(d.plan?.slug || d.plan?.key || 'unknown'),
+    userId: d.payer?.user_id || null,
+    orgId: d.payer?.organization_id || null,
   };
 }
 
@@ -118,7 +120,7 @@ export async function POST(req: NextRequest) {
     if (!FREE_PLANS.has(item.plan) && (item.userId || item.orgId)) {
       const event = evt.type === 'subscriptionItem.active' ? 'subscription_started' : 'subscription_canceled';
       await trackServer(
-        item.userId ?? `org_${item.orgId}`,
+        item.userId ?? (item.orgId as string), // a team payment belongs to the team's own id (org_…)
         event,
         { plan: item.plan, payer: item.orgId ? 'organization' : 'user' },
         item.orgId,
@@ -187,6 +189,8 @@ export async function POST(req: NextRequest) {
 
 ## Checks
 
+- A team's Team subscription sends `subscription_started` with `payer: organization`, the organization group, and the team's own id (`org_…`) as its distinct id (Clerk sends the team payer's `user_id` as an empty string, so the webhook must treat `""` as missing).
+- In Clerk, Billing → Plans: Pro's feature key is exactly `private_skills`, and Team's is exactly `team_private_skills` (not Clerk's auto-filled `private_team_skills`).
 - At 320px and 390px wide, the page has no sideways scroll and nothing is cut off or overlapping (DESIGN.md › Responsive).
 - Signed in without a plan, publishing a Private skill opens the paywall and sends `paywall_shown` with `feature: private_skills`. Nothing is published.
 - The paywall is one centred column at most 420px wide, with 16px of space on each side on a phone: the lock, the title, the text, the plan box (Pro, $8/month), then "See plans" and "Publish as public instead" as two full-width 44px buttons. Check it at 320px, 390px and 1280px: nothing is cut off.
@@ -196,6 +200,7 @@ export async function POST(req: NextRequest) {
 - Opening `/pricing` directly and subscribing there leaves you on `/pricing` (no redirect).
 - Subscribe to Pro with test card `4242 4242 4242 4242`, any future expiry date and any CVC. The webhook log shows 200, and PostHog receives `subscription_started` with `plan: pro` and `payer: user`.
 - Publishing a Private skill now works: `skill_published` has `visibility: private`, and the skill is invisible when signed out.
+- A team subscribed to Team can publish a Private skill as the team straight after checkout (no paywall).
 - With a team active in the header and Pro on your personal account, "Publish as: Personal" + "Private" publishes (Clerk's token holds only the team's features, so Step 11's `hasActivePro` checks your own subscription). Without Pro, the same choice shows the Pro paywall. Publishing as the team still needs the Team plan.
 - Creating a new team sends `organization_created`. Default free-plan webhook events send nothing.
 

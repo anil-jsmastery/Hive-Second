@@ -13,10 +13,12 @@ function readSubscriptionItem(data: unknown) {
     plan?: { slug?: string; key?: string };
     payer?: { user_id?: string | null; organization_id?: string | null };
   };
+  // Clerk sends an empty string (not null) for the id that doesn't apply: a team payer
+  // has user_id "". Use || so empty strings become null too.
   return {
-    plan: String(d.plan?.slug ?? d.plan?.key ?? 'unknown'),
-    userId: d.payer?.user_id ?? null,
-    orgId: d.payer?.organization_id ?? null,
+    plan: String(d.plan?.slug || d.plan?.key || 'unknown'),
+    userId: d.payer?.user_id || null,
+    orgId: d.payer?.organization_id || null,
   };
 }
 
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     if (!FREE_PLANS.has(item.plan) && (item.userId || item.orgId)) {
       const event = evt.type === 'subscriptionItem.active' ? 'subscription_started' : 'subscription_canceled';
       await trackServer(
-        item.userId ?? `org_${item.orgId}`,
+        item.userId ?? (item.orgId as string), // a team payment belongs to the team's own id (org_…)
         event,
         { plan: item.plan, payer: item.orgId ? 'organization' : 'user' },
         item.orgId,
