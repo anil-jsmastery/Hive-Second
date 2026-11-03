@@ -28,7 +28,8 @@ const arg = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const URL_BASE = (arg.url || '').replace(/\/$/, '');
 const RETURN_OF = arg['return-wave'] || null;
-const COHORT = RETURN_OF || arg.cohort || 'A';
+// Default to the test cohort, so a run without --cohort can never mix into Cohort A or B.
+const COHORT = RETURN_OF || arg.cohort || 'T';
 const AGENTS = Number(arg.agents || 10);
 const CONCURRENCY = Number(arg.concurrency || 10);
 const SPREAD_MIN = Number(arg['spread-minutes'] || 0);
@@ -96,8 +97,8 @@ Reply with one JSON object only, with these fields:
 "type" replaces everything in a field with your text. "keyboard" adds to whatever is focused:
 use it only for verification codes.
 To choose from a dropdown, use "select" with the dropdown's id and the exact option text.
-Field values are shown up to 160 characters; a longer value also shows its total length.
-If a field already holds your text, it is filled: don't type it again.
+Long field values are shortened in this list: you see the first 300 characters, then "…" and the field's full length.
+That only shortens the list, not the field: if a field's length matches your text, the field holds all of it. Don't type it again.
 Use "done" only when your goal is truly achieved. Use "give_up" when a real person like you would leave.
 Never invent element ids. Never type anything you were not given or would not know.`;
 
@@ -203,7 +204,7 @@ async function runAgent(browser, p) {
   const rec = {
     id: p.id, cohort: p.cohort, type: p.type, variant: p.variant, username: p.username, success: p.success,
     model: MODEL, steps: 0, inTok: 0, outTok: 0, cost: 0, priceKnown: true, retries: 0,
-    parseErrors: 0, actionErrors: 0, outcome: null, lastThought: '', trace: [],
+    parseErrors: 0, actionErrors: 0, failures: [], outcome: null, lastThought: '', trace: [],
     seen: { installToast: false, skillPage: false, dashboard: false, leftDashboardTo: false },
   };
   const t0 = Date.now();
@@ -252,12 +253,18 @@ async function runAgent(browser, p) {
         await act(page, obs.frames, a);
         const shown = a.text && a.action !== 'select' ? ` "${String(a.text).slice(0, 30)}"` : '';
         history.push(`${step + 1}. ${a.action}${a.target ? ` [${a.target}]` : ''}${shown} (${a.thought || ''})`);
-      } catch {
+      } catch (e) {
         rec.actionErrors++;
+        const why = String(e?.message || e).split('\n')[0].slice(0, 160);
+        rec.trace[rec.trace.length - 1].failed = why;
+        rec.failures.push({ step: step + 1, action: a.action, target: a.target, error: why });
         history.push(`${step + 1}. ${a.action} [${a.target}] did not work`);
       }
-      // Human-ish pacing, so session replays are watchable.
+      // Human-ish pacing, so session replays are watchable. After a navigation, also
+      // let the new page finish loading, so the next snapshot's element ids are fresh.
       await page.waitForTimeout(400 + Math.floor(Math.random() * 800));
+      await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 2500 }).catch(() => {});
     }
     rec.outcome ||= 'out_of_steps';
     if (!RETURN_OF) {

@@ -60,6 +60,7 @@ The user fills in `swarm/.env` (rule 11): `SWARM_MODEL` and the API key for that
 | Ground truth | Success comes from evidence, never from what the agent claims: the "Install command copied" toast seen in the page, or rows in Supabase (skills, comments, stars) authored by the agent's profile |
 | Browser identity | posthog-js drops headless Chrome as a bot (it checks `navigator.webdriver` and the browser brands, not just the user agent). The harness launches Chrome without the automation flag and reports a normal browser brand and user agent, so sessions are recorded. Agents stay identifiable through `cohort: swarm-<name>` on every event |
 | Clipboard | Every agent's browser gets clipboard permission, because "Install" copies a command before showing its toast |
+| What agents see | Each element is listed with its state: a dropdown's current value, `(checked)` / `(not checked)` for radios and checkboxes, `(pressed)` / `(not pressed)` for toggles. Styled radio cards that hide the real input (Hive's Visibility cards) are listed by their visible label, and clicking it checks the radio. Long values are shown in full up to 300 characters; longer ones say the list shows only the start, so agents don't retype what's already there. Failed actions save their error in the trace and in a `failures` list, and the harness lets each page finish loading before the next step |
 | Element ids | The snapshot shows ids as `[0:12]`; the harness accepts any form a model replies with (`0:12`, `[0:12]`, `#0:12`, `12`), so one model's formatting habit can't turn into failed actions |
 | Dropdowns | shadcn/Radix dropdowns: the `select` action opens a list only if it isn't open already (clicking an open trigger closes it), picks the visible option, and leaves the list closed. Before any click outside an open list, the harness presses Escape, because the list's invisible overlay would swallow the click. The snapshot tells the agent when a list is open |
 | Step limits | Signing up takes about 12 steps, so limits leave room for the goal: consumers and curators 30, mobile 20, lurkers 8, builders 36, private builders 50, team builders 60, return visits 14 |
@@ -116,7 +117,7 @@ Clerk development instances hold at most **100 users**, counting every agent tha
 
 - `swarm/` matches `build-plan/swarm/` exactly (`diff -r build-plan/swarm swarm` shows only the new `.env`, `state/` and `results/`).
 - `git check-ignore swarm/.env swarm/state swarm/results` lists all three.
-- A free dry run works: `node swarm/run.mjs --url=<deployed URL> --agents=3 --model=mock:random` finishes with 0 crashed.
+- A free dry run works: `node swarm/run.mjs --url=<deployed URL> --cohort=T --agents=3 --model=mock:random` finishes with 0 crashed. (Every test run uses cohort `T`, so nothing it sends is tagged `swarm-A`; runs without `--cohort` default to `T` too.)
 - The 10-agent batch with the real model (`node swarm/run.mjs --url=<deployed URL> --cohort=T --agents=10`). Test batches always use cohort `T`, so they never mix with Cohort A's data:
   - 0 crashed, and unclear replies close to 0.
   - Clerk shows new users with `+clerk_test` emails.

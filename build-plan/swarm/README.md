@@ -48,7 +48,7 @@ node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=90 --on
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | `--url` | required | The deployed Hive URL |
-| `--cohort` | `A` | Cohort name, sent to PostHog as `cohort: swarm-<name>` |
+| `--cohort` | T | Cohort name, sent to PostHog as `cohort: swarm-<name>` |
 | `--agents` | 10 | Number of agents |
 | `--concurrency` | 10 | Browsers at once. Lower it if you hit rate limits or your laptop slows down |
 | `--spread-minutes` | 0 | Spread arrivals over this many minutes |
@@ -61,7 +61,7 @@ node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=90 --on
 | `--seed` | 42 | Same seed, same personas |
 | `--headed` | off | Show the browsers (for debugging) |
 
-Free dry run without any API key: `--model=mock:random`.
+Free dry run without any API key: `--cohort=T --model=mock:random`. Runs without `--cohort` default to the test cohort `T`, so they never mix into Cohort A or B.
 
 ## Clean up between runs
 
@@ -97,6 +97,19 @@ Clerk development instances hold at most **100 users**, and every agent that sig
 
 - **100 agents** fit: lurkers (5%) never sign up, so about 95 accounts are created.
 - **Builder-only batches** of `--agents=90 --only=builder --exclude=builder-private,builder-team` create 90 accounts each. For a bigger experiment, run several batches with a cleanup in between: PostHog keeps every batch's events, so the experiment adds them up.
+
+## What agents see
+
+Each step, the harness turns the page into a list of buttons, links and fields, with their state, so the agent can see whether a choice took:
+
+- **Dropdowns** show their current value: `select "Publish as" = "Tom’s Studio" options: …`.
+- **Radios and checkboxes** show `(checked)` or `(not checked)`. When a design hides the real input and shows a styled `<label>` card instead (like Hive's Visibility cards), the card is listed in its place, and clicking it checks the radio, just as a person would.
+- **Toggle buttons** (like Star) show `(pressed)` or `(not pressed)`.
+- **Long field values** are shown in full up to 300 characters. Longer ones end with "…" and say the list shows only the start while the field holds every character, so agents don't retype text that's already there.
+- **A failed action** saves its error in the agent's trace (`failed: …`) and in the agent's `failures` list (step, action, target, error) in `agents.jsonl`, so every failure can be diagnosed.
+- After every action the harness waits for the page to finish loading, so the next list never points at elements that are about to disappear.
+
+If an agent repeats the same action many times, check this list in its trace first: it usually means the agent couldn't see that its action worked.
 
 ## Element ids
 

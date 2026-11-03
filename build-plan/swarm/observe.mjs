@@ -17,21 +17,33 @@ function collectInFrame({ fi, limit }) {
   };
   const clean = (s, n = 70) => (s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
+  // Styled radio and checkbox cards often hide the real input (opacity 0) and show a
+  // <label> instead. People click the label, so the snapshot lists the visible label
+  // in place of the hidden input, with the input's type and checked state.
+  const labelFor = (el) => (el.labels && el.labels[0]) || el.closest('label');
   const seen = new Set();
-  const els = [...document.querySelectorAll(SELECTOR)].filter((el) => {
-    if (seen.has(el) || !visible(el)) return false;
+  const picks = [];
+  for (const el of document.querySelectorAll(SELECTOR)) {
+    if (seen.has(el)) continue;
     seen.add(el);
-    return true;
-  }).slice(0, limit);
+    if (visible(el)) { picks.push({ el, target: el }); continue; }
+    const t = (el.getAttribute('type') || '').toLowerCase();
+    if (el.tagName === 'INPUT' && (t === 'radio' || t === 'checkbox')) {
+      const lab = labelFor(el);
+      if (lab && visible(lab) && !seen.has(lab)) { seen.add(lab); picks.push({ el, target: lab }); }
+    }
+  }
+  const els = picks.slice(0, limit);
 
-  const items = els.map((el, i) => {
+  const items = els.map(({ el, target }, i) => {
     const id = `${fi}:${i}`;
-    el.setAttribute('data-sw', id);
+    target.setAttribute('data-sw', id);
     const tag = el.tagName.toLowerCase();
     const role = el.getAttribute('role') || '';
     const type = el.getAttribute('type') || '';
     const label = clean(
-      el.getAttribute('aria-label')
+      (target !== el && target.innerText)
+      || el.getAttribute('aria-label')
       || (el.labels && el.labels[0] && el.labels[0].innerText)
       || el.innerText
       || el.getAttribute('placeholder')
@@ -42,19 +54,25 @@ function collectInFrame({ fi, limit }) {
     );
     let state = '';
     if (tag === 'input' || tag === 'textarea') {
-      if (type === 'checkbox' || type === 'radio') state = el.checked ? ' (checked)' : '';
+      if (type === 'checkbox' || type === 'radio') state = el.checked ? ' (checked)' : ' (not checked)';
       else if (type === 'password') state = el.value ? ' = "••••"' : ' (empty)';
       else if (!el.value) state = ' (empty)';
       else {
         const v = el.value;
-        state = ` = "${clean(v, 160)}"${v.length > 160 ? ` (${v.length} characters in total)` : ''}`;
+        state = v.length > 300
+          ? ` = "${clean(v, 300)}…" (only the start is shown in this list; the field holds all ${v.length} characters)`
+          : ` = "${clean(v, 300)}"`;
       }
     }
     if (tag === 'select') {
-      state = ` options: ${[...el.options].map((o) => clean(o.text, 20)).join(' | ')}`;
+      const current = el.selectedIndex >= 0 ? clean(el.options[el.selectedIndex].text, 40) : '';
+      state = `${current ? ` = "${current}"` : ' (nothing selected)'} options: ${[...el.options].map((o) => clean(o.text, 20)).join(' | ')}`;
     }
     const aria = el.getAttribute('aria-checked') || el.getAttribute('aria-selected') || el.getAttribute('aria-expanded');
     if (aria === 'true') state += ' (selected)';
+    const pressed = el.getAttribute('aria-pressed');
+    if (pressed === 'true') state += ' (pressed)';
+    else if (pressed === 'false') state += ' (not pressed)';
     if (el.disabled || el.getAttribute('aria-disabled') === 'true') state += ' (disabled)';
     const kind = role || (type && tag === 'input' ? `input:${type}` : tag);
     return `[${id}] ${kind} "${label}"${state}`;
