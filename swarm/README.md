@@ -107,7 +107,8 @@ Each step, the harness turns the page into a list of buttons, links and fields, 
 - **Toggle buttons** (like Star) show `(pressed)` or `(not pressed)`.
 - **Long field values** are shown in full up to 300 characters. Longer ones end with "…" and say the list shows only the start while the field holds every character, so agents don't retype text that's already there.
 - **A failed action** saves its error in the agent's trace (`failed: …`) and in the agent's `failures` list (step, action, target, error) in `agents.jsonl`, so every failure can be diagnosed.
-- After every action the harness waits for the page to finish loading, so the next list never points at elements that are about to disappear.
+- After every action the harness waits for the page to finish loading. After clicking a link to another page, it waits until the browser has actually arrived there (up to 15 seconds), because a server-rendered page can take seconds while the old page stays on screen. So the next list never points at elements that are about to disappear.
+- **Every trace step has a timestamp** (`at`, seconds since the agent started), so timing questions can be answered exactly.
 
 If an agent repeats the same action many times, check this list in its trace first: it usually means the agent couldn't see that its action worked.
 

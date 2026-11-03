@@ -247,7 +247,7 @@ async function runAgent(browser, p) {
       if (!a || !a.action) { rec.parseErrors++; history.push(`${step + 1}. (my reply was unclear)`); continue; }
       if (a.target) a.target = normalizeTarget(a.target);
       rec.lastThought = a.thought || '';
-      rec.trace.push({ url: obs.url, action: a.action, target: a.target, text: a.action === 'type' && /password/i.test(a.target) ? '••••' : a.text, thought: a.thought });
+      rec.trace.push({ at: Math.round((Date.now() - t0) / 100) / 10, url: obs.url, action: a.action, target: a.target, text: a.action === 'type' && /password/i.test(a.target) ? '••••' : a.text, thought: a.thought });
       if (a.action === 'done' || a.action === 'give_up') { rec.outcome = a.action; break; }
       try {
         await act(page, obs.frames, a);

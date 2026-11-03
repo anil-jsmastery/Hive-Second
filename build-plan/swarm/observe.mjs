@@ -143,6 +143,13 @@ export function normalizeTarget(target) {
   return m.length === 3 ? `${m[1]}:${m[2]}` : `0:${m[1]}`;
 }
 
+function pathOf(url) {
+  try { const u = new URL(url); return u.pathname + u.search; } catch { return url; }
+}
+function sameSite(a, b) {
+  try { return new URL(a).origin === new URL(b).origin; } catch { return false; }
+}
+
 async function openListbox(frame) {
   return (await frame.locator('[role="listbox"]').filter({ visible: true }).count()) > 0;
 }
@@ -178,7 +185,15 @@ export async function act(page, frames, a) {
       const text = String(a.text ?? '');
       if (a.action === 'click') {
         await closeDropdownUnlessInside(page, frame, el);
+        const before = page.url();
+        const href = await el.evaluate((n) => n.closest('a[href]')?.href || '').catch(() => '');
         await el.click({ timeout });
+        // A link to another page: wait until the browser has really arrived. A
+        // server-rendered page can take seconds, and until then the old page stays on
+        // screen, so the next snapshot would show it and the agent would click again.
+        if (href && sameSite(href, before) && pathOf(href) !== pathOf(before)) {
+          await page.waitForURL((u) => pathOf(u.href) === pathOf(href), { timeout: 15000 }).catch(() => {});
+        }
       } else if (a.action === 'type') {
         // "type" always replaces the field's content, never adds to it.
         try {
