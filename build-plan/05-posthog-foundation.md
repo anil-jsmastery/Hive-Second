@@ -76,8 +76,24 @@ export type EventName = keyof EventProps;
 
 ```ts
 import 'server-only';
+import { cookies } from 'next/headers';
 import { PostHog } from 'posthog-node';
 import type { EventName, EventProps } from './events';
+
+// Swarm agents carry a hive_cohort cookie (set in instrumentation-client.ts), so
+// events sent from the server get the same cohort and persona as their browser
+// events. Real visitors never have it. Outside a request (no cookies), it's skipped.
+async function swarmProperties(): Promise<Record<string, string>> {
+  try {
+    const jar = await cookies();
+    const cohort = jar.get('hive_cohort')?.value;
+    if (!cohort) return {};
+    const persona = jar.get('hive_persona')?.value;
+    return { cohort, ...(persona ? { persona } : {}) };
+  } catch {
+    return {};
+  }
+}
 
 function client() {
   return new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
@@ -98,7 +114,7 @@ export async function trackServer<E extends EventName>(
   ph.capture({
     distinctId,
     event,
-    properties: { ...properties, source: 'server' },
+    properties: { ...(await swarmProperties()), ...properties, source: 'server' },
     ...(orgId ? { groups: { organization: orgId } } : {}),
   });
   await ph.shutdown();
@@ -160,6 +176,10 @@ if (swarm) {
     persona: params.get('persona') ?? 'unknown',
     model: params.get('model') ?? 'unknown',
   });
+  // The same tag as cookies, so server-side events carry it too (lib/analytics/server.ts).
+  const year = 60 * 60 * 24 * 365;
+  document.cookie = `hive_cohort=swarm-${encodeURIComponent(swarm)}; path=/; max-age=${year}; samesite=lax`;
+  document.cookie = `hive_persona=${encodeURIComponent(params.get('persona') ?? 'unknown')}; path=/; max-age=${year}; samesite=lax`;
 }
 ```
 
@@ -188,6 +208,7 @@ If the pinned `posthog-js` doesn't support an option above (for example `capture
 
 ## Checks
 
+- Visiting `/?swarm=T&persona=test` sets the `hive_cohort` and `hive_persona` cookies, and a server-side event from that browser (for example the `user_signed_up` from Step 06 later) carries `cohort: swarm-T`. A normal visit sets neither cookie.
 - `npm run build` passes.
 - The PostHog CLI (`posthog-cli`), the PostHog MCP server and `NEXT_PUBLIC_POSTHOG_KEY` all point at the same project: the agent reports each one's project name or ID.
 - Opening `/` shows a `$pageview` in PostHog's live events, and nothing else: no `$autocapture` and no `$web_vitals`.
@@ -200,7 +221,7 @@ Append this block to the end of `MEMORY.md`, **VERBATIM**:
 ```md
 ## After step 05
 - PostHog helpers: lib/analytics/events.ts (the only event list), server.ts (trackServer with optional orgId, setPersonProperties, identifyOrganization, getFlag), client.ts (trackClient).
-- instrumentation-client.ts initializes posthog-js with autocapture off and registers swarm properties from the URL.
+- instrumentation-client.ts initializes posthog-js with autocapture off, registers swarm properties from the URL and saves them as hive_cohort / hive_persona cookies; trackServer adds them to server events, so every swarm event (browser and server) carries cohort.
 - TrackOnMount fires a client event once per mount.
 ```
 

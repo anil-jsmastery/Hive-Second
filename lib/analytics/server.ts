@@ -1,6 +1,22 @@
 import 'server-only';
+import { cookies } from 'next/headers';
 import { PostHog } from 'posthog-node';
 import type { EventName, EventProps } from './events';
+
+// Swarm agents carry a hive_cohort cookie (set in instrumentation-client.ts), so
+// events sent from the server get the same cohort and persona as their browser
+// events. Real visitors never have it. Outside a request (no cookies), it's skipped.
+async function swarmProperties(): Promise<Record<string, string>> {
+  try {
+    const jar = await cookies();
+    const cohort = jar.get('hive_cohort')?.value;
+    if (!cohort) return {};
+    const persona = jar.get('hive_persona')?.value;
+    return { cohort, ...(persona ? { persona } : {}) };
+  } catch {
+    return {};
+  }
+}
 
 function client() {
   return new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
@@ -21,7 +37,7 @@ export async function trackServer<E extends EventName>(
   ph.capture({
     distinctId,
     event,
-    properties: { ...properties, source: 'server' },
+    properties: { ...(await swarmProperties()), ...properties, source: 'server' },
     ...(orgId ? { groups: { organization: orgId } } : {}),
   });
   await ph.shutdown();
