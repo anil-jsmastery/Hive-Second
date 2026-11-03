@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
 import { chromium } from 'playwright';
 import { buildPersonas, returnWave, seeded, TEST_CARD } from './personas.mjs';
-import { observe, act, normalizeTarget } from './observe.mjs';
+import { observe, act, normalizeTarget, settle } from './observe.mjs';
 import { callModel, checkSpec, priceOf, splitSpec } from './providers.mjs';
 import { evidenceClient, succeeded } from './evidence.mjs';
 
@@ -106,8 +106,10 @@ function prompt(p, obs, history, step) {
   const lines = [
     `PERSONA: ${p.name}, ${p.type}${p.mobile ? ', on a phone' : ''}. Arrived from: ${p.source}.`,
     `GOAL: ${p.goal}`,
-    `IF YOU NEED AN ACCOUNT: sign up with email ${p.email}, username ${p.username}, password ${p.password}.`,
-    'If asked for a verification code, it is 424242. If you already have an account, sign in with the same email and password.',
+    RETURN_OF
+      ? `YOU ALREADY HAVE A HIVE ACCOUNT: email ${p.email}, username ${p.username}, password ${p.password}. You may still be signed in; if not, sign in (don't sign up again).`
+      : `YOU DON'T HAVE A HIVE ACCOUNT YET. If you need one, sign up (not sign in) with email ${p.email}, username ${p.username}, password ${p.password}.`,
+    'If asked for a verification code, it is 424242.',
   ];
   if (p.canPay) {
     lines.push(`IF YOU DECIDE TO PAY: card ${TEST_CARD.number}, expiry ${TEST_CARD.expiry}, CVC ${TEST_CARD.cvc}, ZIP ${TEST_CARD.zip}.`);
@@ -204,7 +206,7 @@ async function runAgent(browser, p) {
   const rec = {
     id: p.id, cohort: p.cohort, type: p.type, variant: p.variant, username: p.username, success: p.success,
     model: MODEL, steps: 0, inTok: 0, outTok: 0, cost: 0, priceKnown: true, retries: 0,
-    parseErrors: 0, actionErrors: 0, failures: [], outcome: null, lastThought: '', trace: [],
+    parseErrors: 0, actionErrors: 0, interrupted: 0, failures: [], outcome: null, lastThought: '', trace: [],
     seen: { installToast: false, skillPage: false, dashboard: false, leftDashboardTo: false },
   };
   const t0 = Date.now();
@@ -247,24 +249,33 @@ async function runAgent(browser, p) {
       if (!a || !a.action) { rec.parseErrors++; history.push(`${step + 1}. (my reply was unclear)`); continue; }
       if (a.target) a.target = normalizeTarget(a.target);
       rec.lastThought = a.thought || '';
-      rec.trace.push({ at: Math.round((Date.now() - t0) / 100) / 10, url: obs.url, action: a.action, target: a.target, text: a.action === 'type' && /password/i.test(a.target) ? '••••' : a.text, thought: a.thought });
+      // Never log a password: catch it by the field's type, or by matching the agent's own password.
+      const line = obs.items.find((l) => l.startsWith(`[${a.target}]`)) || '';
+      const secret = a.action === 'type' && (/input:password/.test(line) || (p.password && String(a.text) === p.password));
+      rec.trace.push({ at: Math.round((Date.now() - t0) / 100) / 10, url: obs.url, action: a.action, target: a.target, text: secret ? '••••' : a.text, thought: a.thought });
       if (a.action === 'done' || a.action === 'give_up') { rec.outcome = a.action; break; }
       try {
         await act(page, obs.frames, a);
-        const shown = a.text && a.action !== 'select' ? ` "${String(a.text).slice(0, 30)}"` : '';
+        const shown = secret ? ' (your full password)' : a.text && a.action !== 'select' ? ` "${String(a.text).slice(0, 30)}"` : '';
         history.push(`${step + 1}. ${a.action}${a.target ? ` [${a.target}]` : ''}${shown} (${a.thought || ''})`);
       } catch (e) {
-        rec.actionErrors++;
         const why = String(e?.message || e).split('\n')[0].slice(0, 160);
-        rec.trace[rec.trace.length - 1].failed = why;
-        rec.failures.push({ step: step + 1, action: a.action, target: a.target, error: why });
+        // A frame being replaced (Clerk's checkout reloading its card form) or the
+        // agent's own browser closing interrupts an action without the agent doing
+        // anything wrong. Those are logged, but not counted as failed actions.
+        const interrupted = /has been closed|detached|Execution context was destroyed|no longer on the page/i.test(why) || page.isClosed();
+        if (interrupted) rec.interrupted++; else rec.actionErrors++;
+        rec.trace[rec.trace.length - 1][interrupted ? 'interrupted' : 'failed'] = why;
+        rec.failures.push({ step: step + 1, at: rec.trace[rec.trace.length - 1].at, action: a.action, target: a.target, error: why, kind: interrupted ? 'interrupted' : 'failed' });
         history.push(`${step + 1}. ${a.action} [${a.target}] did not work`);
+        if (page.isClosed()) break;
       }
       // Human-ish pacing, so session replays are watchable. After a navigation, also
       // let the new page finish loading, so the next snapshot's element ids are fresh.
       await page.waitForTimeout(400 + Math.floor(Math.random() * 800));
       await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
       await page.waitForLoadState('networkidle', { timeout: 2500 }).catch(() => {});
+      await settle(page);
     }
     rec.outcome ||= 'out_of_steps';
     if (!RETURN_OF) {
@@ -358,6 +369,7 @@ const summary = {
     crashed: results.filter((r) => r.outcome === 'crashed').length,
     parseErrors: results.reduce((a, r) => a + r.parseErrors, 0),
     actionErrors: results.reduce((a, r) => a + r.actionErrors, 0),
+    interrupted: results.reduce((a, r) => a + (r.interrupted || 0), 0),
     apiRetries: results.reduce((a, r) => a + r.retries, 0),
   },
   evidence: db ? 'supabase + browser' : 'browser only (no Supabase keys in .env.local)',
@@ -366,7 +378,7 @@ const summary = {
 fs.writeFileSync(path.join(OUT_DIR, 'summary.json'), JSON.stringify(summary, null, 2));
 
 console.log(`\nDone in ${summary.wallClockMinutes} min. Cost: ${typeof summary.totalCostUSD === 'number' ? `$${summary.totalCostUSD}` : summary.totalCostUSD}.`);
-console.log(`Reliability: ${summary.reliability.crashed} crashed, ${summary.reliability.parseErrors} unclear replies, ${summary.reliability.actionErrors} failed actions, ${summary.reliability.apiRetries} API retries.`);
+console.log(`Reliability: ${summary.reliability.crashed} crashed, ${summary.reliability.parseErrors} unclear replies, ${summary.reliability.actionErrors} failed actions (${summary.reliability.interrupted} more interrupted because the page changed or closed under the agent), ${summary.reliability.apiRetries} API retries.`);
 for (const [v, g] of Object.entries(byVariant)) {
   console.log(`  ${v.padEnd(18)} ${String(g.agents).padStart(3)} agents  success ${g.successRate.padStart(4)}${g.unverified ? ` (${g.unverified} unverified)` : ''}  ${g.avgSteps} steps  $${g.avgCostUSD}/agent`);
 }

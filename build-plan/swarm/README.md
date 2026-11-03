@@ -109,6 +109,11 @@ Each step, the harness turns the page into a list of buttons, links and fields, 
 - **A failed action** saves its error in the agent's trace (`failed: …`) and in the agent's `failures` list (step, action, target, error) in `agents.jsonl`, so every failure can be diagnosed.
 - After every action the harness waits for the page to finish loading. After clicking a link to another page, it waits until the browser has actually arrived there (up to 15 seconds), because a server-rendered page can take seconds while the old page stays on screen. So the next list never points at elements that are about to disappear.
 - **Every trace step has a timestamp** (`at`, seconds since the agent started), so timing questions can be answered exactly.
+- **After every action, the harness waits for the page to settle:** no updates for 0.4 seconds, at most 6 seconds. That covers in-page updates (a search or filter re-rendering a list) as well as new pages.
+- **A vanished element fails at once,** with "element 0:44 is no longer on the page (the page changed)", instead of a long timeout. The agent sees the new page on its next step.
+- **Interrupted actions aren't counted as failures.** When the page changes under the agent (an element vanishes after a click already worked), Clerk's checkout replaces its card form, or the agent's own browser closes as it finishes, the action is logged with `kind: interrupted` and reported separately in the Reliability line.
+- **Passwords are never logged:** typing into a password field, or typing the agent's own password, is saved as `••••` in the trace. The model itself (which already knows the password from its instructions) sees "(your full password)" in its history, and a filled password field shows as "(filled: 16 characters, hidden)", so it can tell the field holds the whole password.
+- **Each agent is told plainly whether it has an account:** new agents "don't have a Hive account yet" and sign up; return-wave agents already have one and sign in.
 
 If an agent repeats the same action many times, check this list in its trace first: it usually means the agent couldn't see that its action worked.
 

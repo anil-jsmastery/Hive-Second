@@ -55,7 +55,7 @@ function collectInFrame({ fi, limit }) {
     let state = '';
     if (tag === 'input' || tag === 'textarea') {
       if (type === 'checkbox' || type === 'radio') state = el.checked ? ' (checked)' : ' (not checked)';
-      else if (type === 'password') state = el.value ? ' = "••••"' : ' (empty)';
+      else if (type === 'password') state = el.value ? ` (filled: ${el.value.length} characters, hidden)` : ' (empty)';
       else if (!el.value) state = ' (empty)';
       else {
         const v = el.value;
@@ -182,6 +182,11 @@ export async function act(page, frames, a) {
       const frame = frames[fi];
       if (!frame) throw new Error(`no frame for ${a.target}`);
       const el = frame.locator(`[data-sw="${target}"]`).first();
+      // If the page changed since the snapshot, say so at once instead of waiting
+      // for Playwright's timeout. The agent sees the new page on its next step.
+      if ((await el.count().catch(() => 0)) === 0) {
+        throw new Error(`element ${target} is no longer on the page (the page changed)`);
+      }
       const text = String(a.text ?? '');
       if (a.action === 'click') {
         await closeDropdownUnlessInside(page, frame, el);
@@ -229,4 +234,30 @@ export async function act(page, frames, a) {
   }
   await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(700);
+}
+
+// Wait until the page stops changing: no DOM updates for quietMs, at most maxMs.
+// Covers in-page updates (a search or filter re-rendering a list) as well as new
+// pages, so the next snapshot never shows elements that are about to be replaced.
+export async function settle(page, quietMs = 400, maxMs = 6000) {
+  for (let tries = 0; tries < 2; tries++) {
+    try {
+      await page.evaluate(({ quietMs, maxMs }) => new Promise((resolve) => {
+        const start = Date.now();
+        let timer;
+        const done = () => { obs.disconnect(); clearTimeout(timer); resolve(); };
+        const obs = new MutationObserver(() => {
+          clearTimeout(timer);
+          timer = setTimeout(done, Math.max(0, Math.min(quietMs, maxMs - (Date.now() - start))));
+        });
+        obs.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+        timer = setTimeout(done, quietMs);
+        setTimeout(done, maxMs);
+      }), { quietMs, maxMs });
+      return;
+    } catch {
+      // A navigation replaced the page mid-wait: let the new one load, then try once more.
+      await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+    }
+  }
 }
