@@ -56,7 +56,7 @@ The user fills in `swarm/.env` (rule 11): `SWARM_MODEL` and the API key for that
 | Personas | consumer 40%, builder 25%, curator 15%, mobile 15% (390×844 viewport, phone user agent), lurker 5%. Of the builders, one in five wants a **private** skill for themselves and one in five wants a private skill **for their company's team** |
 | Goals | Agents get a goal and a patience limit, never a click path |
 | Arrivals | Agents start at random times across `--spread-minutes`: 0 for test batches, 90 for cohorts. Never all at once in a cohort |
-| Return wave | `--return-wave=A` reloads saved state for about half of Cohort A, starts on `/dashboard` with the goal "See what happened to your skills and react to anything interesting." |
+| Return wave | `--return-wave=A` reloads saved state for about half of Cohort A's signed-in agents (sessions are saved only for agents that ended up signed in), starts on `/dashboard` with the goal "See what happened to your skills and react to anything interesting." |
 | Ground truth | Success comes from evidence, never from what the agent claims: the "Install command copied" toast seen in the page, or rows in Supabase (skills, comments, stars) authored by the agent's profile |
 | Browser identity | posthog-js drops headless Chrome as a bot (it checks `navigator.webdriver` and the browser brands, not just the user agent). The harness launches Chrome without the automation flag and reports a normal browser brand and user agent, so sessions are recorded. Agents stay identifiable through `cohort: swarm-<name>` on every event |
 | Clipboard | Every agent's browser gets clipboard permission, because "Install" copies a command before showing its toast |

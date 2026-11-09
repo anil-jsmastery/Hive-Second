@@ -308,9 +308,13 @@ language sql stable security invoker set search_path = public as $$
          or to_tsvector('english', s.title || ' ' || s.description || ' ' || array_to_string(s.tags, ' ')) @@ p.tsq)
     and (stack_filter is null or s.stack = stack_filter)
   order by
+    -- A search ranks by relevance, then stars. With no search, Explore shows the
+    -- newest skills first, so a newly published skill is seen instead of sitting
+    -- below every established one.
     case when p.tsq is null then 0
          else ts_rank(to_tsvector('english', s.title || ' ' || s.description || ' ' || array_to_string(s.tags, ' ')), p.tsq)
     end desc,
+    case when p.tsq is null then s.created_at end desc nulls last,
     s.stars_count desc,
     s.created_at desc
   limit 30

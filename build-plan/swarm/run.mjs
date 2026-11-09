@@ -279,8 +279,17 @@ async function runAgent(browser, p) {
     }
     rec.outcome ||= 'out_of_steps';
     if (!RETURN_OF) {
-      fs.mkdirSync(STATE_DIR, { recursive: true });
-      await context.storageState({ path: statePath });
+      // Save the session only for agents that ended up signed in, so the return wave
+      // brings back real members, not visitors who never made an account. Clerk's
+      // __client_uat cookie is "0" when signed out and a timestamp when signed in.
+      const cookies = await context.cookies().catch(() => []);
+      const signedIn = cookies.some((c) => c.name.startsWith('__client_uat') && c.value && c.value !== '0');
+      if (signedIn) {
+        fs.mkdirSync(STATE_DIR, { recursive: true });
+        await context.storageState({ path: statePath });
+      } else if (fs.existsSync(statePath)) {
+        fs.rmSync(statePath);
+      }
     }
   } catch (e) {
     rec.outcome = 'crashed';

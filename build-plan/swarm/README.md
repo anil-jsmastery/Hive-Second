@@ -113,6 +113,7 @@ Each step, the harness turns the page into a list of buttons, links and fields, 
 - **A vanished element fails at once,** with "element 0:44 is no longer on the page (the page changed)", instead of a long timeout. The agent sees the new page on its next step.
 - **Interrupted actions aren't counted as failures.** When the page changes under the agent (an element vanishes after a click already worked), Clerk's checkout replaces its card form, or the agent's own browser closes as it finishes, the action is logged with `kind: interrupted` and reported separately in the Reliability line.
 - **Passwords are never logged:** typing into a password field, or typing the agent's own password, is saved as `••••` in the trace. The model itself (which already knows the password from its instructions) sees "(your full password)" in its history, and a filled password field shows as "(filled: 16 characters, hidden)", so it can tell the field holds the whole password.
+- **Only signed-in agents return.** A session is saved for the return wave only if the agent ended up signed in (Clerk's `__client_uat` cookie isn't "0"), so visitors who never made an account, like lurkers, don't come back to a dashboard they don't have.
 - **Each agent is told plainly whether it has an account:** new agents "don't have a Hive account yet" and sign up; return-wave agents already have one and sign in.
 
 If an agent repeats the same action many times, check this list in its trace first: it usually means the agent couldn't see that its action worked.

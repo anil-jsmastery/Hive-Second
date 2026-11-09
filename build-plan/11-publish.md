@@ -207,6 +207,7 @@ Each field error shows under its field: add `err` to the field's `.fld` and put 
 
 ## Checks
 
+- A skill you've just published is the first card on `/explore` with no search (Explore lists the newest skills first).
 - At 320px and 390px wide, the page has no sideways scroll and nothing is cut off or overlapping (DESIGN.md › Responsive).
 - The page matches the design file's publish view, and the preview card updates as you type.
 - "Insert template" fills the editor with the template and disappears.

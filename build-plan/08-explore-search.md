@@ -75,11 +75,13 @@ Every embedded relation in this plan names its foreign key (for example `profile
 
 ## Checks
 
+- At 320px and 390px wide, the page has no sideways scroll and nothing is cut off or overlapping (DESIGN.md › Responsive).
 - The page matches the design file's Explore view: the search field glows on focus, the active chip is ember, and cards lift with their emblem lighting up on hover.
 - Searching "auth" returns the auth skills.
 - Searching "terraform" shows the empty state and sends `search_performed` with `result_count: 0`.
 - Changing the stack filter while a query is set sends a new `search_performed`.
 - Opening `/explore` with no query sends no search event.
+- With no search, Explore lists skills newest first: the card order matches `created_at`, newest first (check the first three with the Supabase MCP server). A search still ranks by relevance, then stars.
 
 ## Update project memory
 
