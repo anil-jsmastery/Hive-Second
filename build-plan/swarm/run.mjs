@@ -78,10 +78,27 @@ if (RETURN_OF) {
   personas = buildPersonas({ n: AGENTS, cohort: COHORT, seed: SEED });
 }
 
-// Spread arrivals: each agent gets a start time within the window, never all at once.
+// Spread arrivals: each agent gets a start time, never all at once, in the order a
+// real launch happens.
+// - A cohort: creators (builders) arrive in the first third of the window and the
+//   audience from a quarter of the way in to the end, so the audience can actually
+//   find skills that new creators have just published.
+// - A return wave: the audience comes back first (over the first minute) and the
+//   authors 3 to 4 minutes later, after others have had time to react to their skills.
+// Nobody is told what to do: agents still choose freely what to look at and react to.
 const rand = seeded(SEED + 7);
+const isCreator = (p) => p.type === 'builder';
+function startAfterMs(p) {
+  if (RETURN_OF) {
+    const min = isCreator(p) ? 3 + rand() : rand();
+    return Math.floor(min * 60_000);
+  }
+  if (SPREAD_MIN <= 0) return 0;
+  const share = isCreator(p) ? rand() * (1 / 3) : 0.25 + rand() * 0.75;
+  return Math.floor(share * SPREAD_MIN * 60_000);
+}
 const jobs = personas
-  .map((p) => ({ p, startAfterMs: SPREAD_MIN > 0 ? Math.floor(rand() * SPREAD_MIN * 60_000) : 0 }))
+  .map((p) => ({ p, startAfterMs: startAfterMs(p) }))
   .sort((a, b) => a.startAfterMs - b.startAfterMs);
 
 // ---------- the prompt ----------

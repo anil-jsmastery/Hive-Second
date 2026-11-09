@@ -36,7 +36,7 @@ cp swarm/.env.example swarm/.env      # then fill in SWARM_MODEL and your API ke
 node swarm/run.mjs --url=https://your-app.vercel.app --cohort=T --agents=10
 
 # Cohort A: 100 agents arriving over 30 minutes (fits Clerk's 100-user development limit)
-node swarm/run.mjs --url=https://your-app.vercel.app --cohort=A --agents=100 --spread-minutes=5 --concurrency=30
+node swarm/run.mjs --url=https://your-app.vercel.app --cohort=A --agents=100 --spread-minutes=8 --concurrency=30
 
 # Return wave: about half of Cohort A comes back, using their saved sessions
 node swarm/run.mjs --url=https://your-app.vercel.app --return-wave=A --cohort-size=100
@@ -90,6 +90,14 @@ If builders rack up failed actions around a dropdown, suspect the harness before
 ## Running faster
 
 Speed comes from how many agents run at once (`--concurrency`, default 10) and how close together they arrive (`--spread-minutes`). Cost doesn't change: you pay per model call, not per minute. `--concurrency=30` cuts the time to about a third. Before a real cohort, run a speed check at that concurrency with at least as many agents (`--cohort=T --agents=30 --concurrency=30`), then clean up, and watch each run's Reliability line: if API retries climb (the model provider is rate-limiting) or many sign-ups fail (Clerk's development instance is throttling), use 20. Each agent is a real Chrome page, so 30 at once wants 16 GB of RAM or more. The harness retries automatically, so results stay accurate; only the time grows. The short pauses between an agent's actions stay on purpose: they keep session replays watchable and the timing human.
+
+## Arrival order
+
+Agents arrive in the order a real launch happens. In a cohort, creators (builders) arrive in the first third of the `--spread-minutes` window, and the audience (consumers, curators, mobile users, lurkers) from a quarter of the way in to the end, so the audience can find skills that new creators have just published. In a return wave, the audience comes back first (over the first minute) and authors 3 to 4 minutes later, after others have had time to comment on or fork their skills. Nobody is told what to do: agents still choose freely what to look at and react to. With an 8-minute window, about 70 of Cohort A's 75 audience agents arrive after the first skills are published.
+
+## Why every persona has an interest
+
+All agents run on the same model, so agents with identical goals behave like copies of one person: given the same page, they all pick the same "obvious" option (in one test, 29 of 30 curator comments went to the most-starred skill). Consumers, mobile users and curators each get a topic of their own, so their choices spread out the way a real audience's do. The topic only sets what they care about: what they actually do is still up to them.
 
 ## Clerk's user limit
 
@@ -145,7 +153,7 @@ After the 10-agent batch, read the **Reliability** line and the run's `summary.j
 | --- | --- | --- | --- |
 | consumer | 40% | Find a skill for a topic and install it (1 in 10 start from a shared link) | The "Install command copied" toast appeared |
 | builder | 25% | Publish their own skill (1 in 5 want it private, 1 in 5 want a private team skill) | A matching row in `skills` |
-| curator | 15% | Star a skill and leave a helpful comment | A row in `comments` |
+| curator | 15% | Star a skill and leave a helpful comment, guided by their own interest (a topic, like consumers) | A row in `comments` |
 | mobile | 15% | Same as consumer, on a phone, impatient | The toast appeared |
 | lurker | 5% | Read about one skill and leave | Opened a skill page |
 

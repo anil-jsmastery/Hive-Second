@@ -4,7 +4,9 @@
 // limits leave room for the goal itself: the swarm should measure real friction,
 // not run out of steps.
 
-const FIRST = ['Priya', 'Marco', 'Lena', 'Sam', 'Aisha', 'Tom', 'Kenji', 'Nora', 'Ravi', 'Eva',
+// Never reuse a seed author's first name (Priya, Marco, Lena, Sam, Aisha, Tom, Kenji, Nora):
+// an agent called Kenji may think the seed author Kenji's skill is its own.
+const FIRST = ['Nadia', 'Pablo', 'Freya', 'Hugo', 'Leila', 'Oscar', 'Wen', 'Dara', 'Ravi', 'Eva',
   'Diego', 'Mei', 'Omar', 'Zoe', 'Ivan', 'Sara', 'Luca', 'Ana', 'Ben', 'Hana', 'Yusuf', 'Chloe',
   'Arjun', 'Mila', 'Felix', 'Ines', 'Kofi', 'Rosa', 'Jin', 'Tara'];
 
@@ -139,7 +141,9 @@ export function buildPersonas({ n, cohort, seed = 42 }) {
 
       if (type === 'curator') {
         p.budget = 30;
-        p.goal = 'Browse the skills, star one you would genuinely use, and leave a short, helpful comment on it.';
+        // Each curator has their own interest, like consumers do. Without one, every curator
+        // (all run by the same model) picks the same "obvious" skill: a simulation artifact.
+        p.goal = `You care about ${topic}. Browse the skills, star one you would genuinely use, and leave a short, helpful comment on it.`;
         p.success = 'comment';
       }
 
