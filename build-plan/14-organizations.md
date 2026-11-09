@@ -52,6 +52,8 @@ Do this at the start of this step, not earlier: until now Hive has been for indi
 
 ## Checks
 
+- Signed in with the switcher showing (your personal account or a team), every header link (Explore, Pricing, Publish, Dashboard) can be clicked at 320px, 390px, 768px and 1280px wide: up to 700px the header is two rows, and up to 900px the switcher shows only its avatar.
+- At 320px and 390px wide, the page has no sideways scroll and nothing is cut off or overlapping (DESIGN.md › Responsive).
 - Create a team "Acme Labs" from the switcher. You land on `/dashboard`, where the panel has a "Team: Acme Labs" tab.
 - Publish a skill with "Publish as: Acme Labs". `skill_published` has `owner: team` and `$groups.organization` set. The skill shows the team badge and appears on `/o/acme-labs`.
 - Supabase `organizations` has one row for Acme Labs.

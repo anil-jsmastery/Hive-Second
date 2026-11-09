@@ -150,11 +150,26 @@ img, video { max-width: 100%; height: auto; }
 .cl-rootBox, .cl-cardBox { max-width: calc(100vw - 32px); }
 [data-sonner-toast].hive-toast { max-width: calc(100vw - 32px); }
 .p-counts { flex-wrap: wrap; }
-.bar-right { min-width: 0; }
 .bar-right .org { min-width: 0; max-width: 40vw; overflow: hidden; }
 .bar-right .org * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 560px) {
-  .bar-right .cl-organizationPreviewTextContainer { display: none; }
+/* Header: the account controls never cover the links (DESIGN.md › Responsive).
+   Up to 900px the team switcher shows only its avatar (Clerk uses organization- or
+   user-preview classes for its label, depending on what's selected). Up to 700px the
+   header is two rows: logo and account controls, then the four links. */
+@media (max-width: 900px) {
+  .bar-right [class*="PreviewTextContainer"],
+  .bar-right [class*="PreviewMainIdentifier"] { display: none; }
+}
+@media (max-width: 700px) {
+  .bar-inner { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 10px; }
+  .bar-inner > .logo { order: 1; }
+  .bar-inner > .bar-right { order: 2; margin-left: auto; }
+  .bar-inner > .nav-links {
+    order: 3; width: 100%; height: 44px; align-items: center; justify-content: space-between;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .bar-inner > .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a[aria-current="page"]::after { bottom: -12px; }
 }
 
 /* Signed-out prompt under comments */
@@ -278,6 +293,7 @@ Every page and dialog must work from a 320px phone to a wide desktop. The design
 - Wide content (code, tables) scrolls inside its own box (`overflow-x: auto`), never the whole page.
 - A dialog or overlay positions and sizes itself (`position: fixed`, centred with `transform`, `width: calc(100vw - 32px)`, a `max-width`, and `max-height: calc(100dvh - 32px)` with `overflow-y: auto`), like the paywall, instead of relying on a library's classes.
 - Buttons and tappable rows stay at least 40px tall on phones.
+- Nothing in the header may cover the links. Up to 900px Clerk's team switcher shows only its avatar, and up to 700px the header is two rows (logo and account controls, then the links). Clerk's components are positioned, so if they overflow they paint *over* the links rather than under them.
 
 **The check, for every page and dialog:** at **320px, 390px, 768px and 1280px** wide, `document.documentElement.scrollWidth <= window.innerWidth` (no sideways scroll), and nothing is cut off or overlapping. Look at least at 390px and 1280px yourself, next to the same view in `design/hive-night.html`.
 
