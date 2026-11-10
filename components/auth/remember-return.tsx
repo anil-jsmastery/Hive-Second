@@ -6,7 +6,13 @@ import { useEffect } from 'react';
 // Steps 18 and 19). Sign-up's forced redirect to /onboarding would otherwise lose it.
 export function RememberReturn() {
   useEffect(() => {
-    const raw = new URLSearchParams(window.location.search).get('redirect_url');
+    // Clerk's links use ?redirect_url=…, but its header button opens
+    // /sign-in#/?redirect_url=… (the parameters after the #), so read both.
+    const hash = window.location.hash;
+    const fromHash = hash.includes('?') ? hash.slice(hash.indexOf('?')) : '';
+    const raw =
+      new URLSearchParams(window.location.search).get('redirect_url') ??
+      new URLSearchParams(fromHash).get('redirect_url');
     if (!raw) return;
     try {
       const url = new URL(raw, window.location.origin);

@@ -27,6 +27,8 @@ Clerk sends every new sign-up to `/onboarding` (`NEXT_PUBLIC_CLERK_SIGN_UP_FORCE
    | Release condition | 100% of users, no property filters |
    | Goal metric | A funnel from exposure to `skill_installed` (did a new user who had a page to return to install a skill?), where an increase is good |
 
+   If the experiment tool doesn't accept the metric when creating the experiment, add it straight after with the experiment update tool.
+
 2. **Include the swarm in the results.** New experiments filter out test accounts, and Step 15's filter removes everything tagged `cohort: swarm-…`. Here the swarm *is* the traffic, so turn **Filter test accounts off** for this experiment. Do it on purpose and say so: in a real launch you'd keep test traffic out.
 
 3. **Launch it.** A draft experiment keeps its flag inactive, so `getFlag` returns nothing and everyone falls back to `control`. Launch the experiment (through the MCP or in the PostHog app) before the checks. There are no real users yet, so launching affects only test accounts and the swarm.
@@ -56,7 +58,13 @@ import { useEffect } from 'react';
 // Steps 18 and 19). Sign-up's forced redirect to /onboarding would otherwise lose it.
 export function RememberReturn() {
   useEffect(() => {
-    const raw = new URLSearchParams(window.location.search).get('redirect_url');
+    // Clerk's links use ?redirect_url=…, but its header button opens
+    // /sign-in#/?redirect_url=… (the parameters after the #), so read both.
+    const hash = window.location.hash;
+    const fromHash = hash.includes('?') ? hash.slice(hash.indexOf('?')) : '';
+    const raw =
+      new URLSearchParams(window.location.search).get('redirect_url') ??
+      new URLSearchParams(fromHash).get('redirect_url');
     if (!raw) return;
     try {
       const url = new URL(raw, window.location.origin);
@@ -102,6 +110,7 @@ Every entry point already sends people to `/sign-in?redirect_url=…` (Install, 
 
 - The experiment "Sign-up return" is **running** (not draft), its flag `signup-return` is active, and **Filter test accounts** is off for this experiment.
 - Signed out, open a skill page and click Install: `/sign-in?redirect_url=/s/<slug>` sets the `hive_return_to` cookie to `/s/<slug>`. Sign up a new test user from there: after onboarding (with **Continue** or with **Skip for now**) you land on `/explore`, the cookie is gone, and the experiment shows an exposure for that user (`$feature_flag_called` for `signup-return`).
+- Signed out on a skill page, the header's **Sign in** button (Clerk puts its parameters after a `#`: `/sign-in#/?redirect_url=…`) also sets `hive_return_to` to that skill's path.
 - A new test user with nothing specific to return to gets no exposure and lands on `/explore`: one who signs up from the header's Sign in button on `/` (the home page isn't remembered), and one who opens `/sign-up` directly.
 - Two test users who signed up from a skill page land in different variants (with 50/50 it can take a few users to get one of each). Both still end on `/explore` in this step.
 
