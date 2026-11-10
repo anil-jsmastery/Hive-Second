@@ -5,7 +5,7 @@
 | What you'll learn | Ship reversibly: server-side flags and experiments |
 | Run it with | The prompt in `build-plan/README.md`, with this file's name |
 
-**Before you start.** Step 17 is committed (`git status` is clean), and `DECISIONS.md` has the row recording the decision this experiment tests (added after reading Cohort A's data). If this step goes wrong before its commit, discard its changes with `git restore . && git clean -fd -e build-plan` (your plan files are kept) and run it again in a new conversation.
+**Before you start.** Step 17 is committed (`git status` is clean), `DECISIONS.md` has the row recording the decision this experiment tests (added after reading Cohort A's data), and the user has run the swarm cleanup (`node swarm/cleanup.mjs --yes`) since the return wave: Cohort A's accounts fill most of Clerk's 100-user development limit, and this step's checks sign up new test users. Cohort A's data stays in PostHog. If this step goes wrong before its commit, discard its changes with `git restore . && git clean -fd -e build-plan` (your plan files are kept) and run it again in a new conversation.
 
 **Goal:** after sign-up, Hive can send people to one of two places, assigned on the server: `/explore` (control) or back to the page that asked them to sign in (test). In this step both variants still go to `/explore`; Step 19 switches the test variant on.
 
@@ -107,6 +107,8 @@ export async function pathAfterOnboarding(userId: string): Promise<string> {
 Every entry point already sends people to `/sign-in?redirect_url=…` (Install, Star and Fork on a skill page, the comment form, `/publish`, the header's Sign in button), so `RememberReturn` on the two auth pages catches them all. Only a specific same-site page is remembered: never the home page, the auth pages or onboarding, so only people the change can affect enter the experiment. The cookie lasts an hour.
 
 ## Checks
+
+**How to run the sign-up checks.** The agent runs them itself, without asking the user: a temporary Playwright script (Playwright is installed for the swarm in Step 17), saved outside the project, against `npm run dev`. It signs up new test users as `agent-s18-NNN+clerk_test@example.com` with verification code `424242`, and keeps signing up from a skill page until both variants have appeared (the variant is in each user's `$feature_flag_called` event for `signup-return`). Launch the browser the way `swarm/run.mjs` does (its user agent and settings), or posthog-js may drop its browser events as a bot; the checks themselves only rely on server events. If Clerk answers "You have reached your limit of 100 users", stop and ask the user to run the cleanup. It reports each user's PostHog person link, then deletes the script.
 
 - The experiment "Sign-up return" is **running** (not draft), its flag `signup-return` is active, and **Filter test accounts** is off for this experiment.
 - Signed out, open a skill page and click Install: `/sign-in?redirect_url=/s/<slug>` sets the `hive_return_to` cookie to `/s/<slug>`. Sign up a new test user from there: after onboarding (with **Continue** or with **Skip for now**) you land on `/explore`, the cookie is gone, and the experiment shows an exposure for that user (`$feature_flag_called` for `signup-return`).

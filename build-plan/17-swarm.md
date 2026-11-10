@@ -109,7 +109,7 @@ Clerk development instances hold at most **100 users**, counting every agent tha
 
 - **The user** runs `node swarm/cleanup.mjs` (to see the list), then `node swarm/cleanup.mjs --yes`, in their own terminal, before every cohort and after every test run. Claude Code's permission system blocks scripts that delete accounts, so the agent never runs it: when a run needs a clean slate, it stops and asks. Keep your own test accounts to five or fewer.
 - Cohort A is **100 agents**: lurkers (5%) never sign up, so about 95 accounts are created.
-- Run the return wave **before** any cleanup: it signs back in as Cohort A's agents.
+- Run the return wave **before** any cleanup: it signs back in as Cohort A's agents. After the return wave and the decision, clean up before Step 18: Steps 18 and 19 sign up new test users, and Cohort A's accounts would leave no room. Their data stays in PostHog.
 
 **Running faster:** for the recorded run, use `--concurrency=30`. Before the real cohort, run a **speed check**: 30 test agents at once (`node swarm/run.mjs --cohort=T --agents=30 --concurrency=30 --url=<deployed URL>`, about 5 minutes, about $0.12), then `node swarm/cleanup.mjs --yes`. A 10-agent batch can't show what 30 at once does. If its Reliability line shows climbing API retries (the model provider is rate-limiting) or failed sign-ups (Clerk is throttling), use `--concurrency=20` instead. Then Cohort A: `--agents=100 --spread-minutes=8 --concurrency=30`, about 11 minutes, about $0.30. Agents arrive like a real launch: builders first, the audience after (see the harness README's "Arrival order"), so new skills get found. Cost doesn't depend on speed.
 

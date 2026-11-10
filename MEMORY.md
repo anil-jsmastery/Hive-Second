@@ -103,3 +103,7 @@ Never edit earlier blocks.
 ## After step 18
 - Experiment "Sign-up return" (created with its flag signup-return in one PostHog MCP call): control/test 50/50, goal = funnel from exposure to skill_installed, test-account filter off so the swarm counts, launched.
 - RememberReturn (on /sign-in and /sign-up) saves Clerk's redirect_url in the hive_return_to cookie. lib/return-to.ts pathAfterOnboarding() is used by saveStack and skipOnboarding: only users with a saved page call getFlag (exposure); in Step 18 every variant still goes to /explore.
+
+## After step 19
+- signup-return test variant: after onboarding, pathAfterOnboarding() returns the saved page (hive_return_to) instead of /explore. The control still goes to /explore. No new events.
+- The experiment's result is recorded in DECISIONS.md once Cohort B (shared-link visitors only, sample decided before the run) has run against the deployed fix.

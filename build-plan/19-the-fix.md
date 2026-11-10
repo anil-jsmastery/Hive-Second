@@ -5,7 +5,7 @@
 | What you'll learn | Decide with evidence |
 | Run it with | The prompt in `build-plan/README.md`, with this file's name |
 
-**Before you start.** Step 18 is committed (`git status` is clean). If this step goes wrong before its commit, discard its changes with `git restore . && git clean -fd -e build-plan` (your plan files are kept) and run it again in a new conversation.
+**Before you start.** Step 18 is committed (`git status` is clean), and Clerk has room for a few new test users (the cleanup before Step 18 freed it; if a check sign-up hits the 100-user limit, ask the user to run the cleanup again). If this step goes wrong before its commit, discard its changes with `git restore . && git clean -fd -e build-plan` (your plan files are kept) and run it again in a new conversation.
 
 **Goal:** ship the fix that Cohort A's data points to, only in the `test` variant of `signup-return`, then run Cohort B to see whether it works.
 
@@ -54,11 +54,13 @@ export async function pathAfterOnboarding(userId: string): Promise<string> {
 
 ## Checks (before the commit)
 
+**How to run the sign-up checks.** The agent runs them itself, without asking the user: a temporary Playwright script (Playwright is installed for the swarm in Step 17), saved outside the project, against `npm run dev`. It signs up new test users as `agent-s19-NNN+clerk_test@example.com` with verification code `424242`, and keeps signing up from a skill page until both variants have appeared (the variant is in each user's `$feature_flag_called` event for `signup-return`). Launch the browser the way `swarm/run.mjs` does (its user agent and settings), or posthog-js may drop its browser events as a bot; the checks themselves only rely on server events. If Clerk answers "You have reached your limit of 100 users", stop and ask the user to run the cleanup. It reports each user's PostHog person link, then deletes the script.
+
 - `git diff HEAD --stat` shows only `lib/return-to.ts`.
 - `npx tsc --noEmit`, `npm run lint` and `npm run build` pass.
 - On the dev server, with new test users who sign up from a skill page (clicking Install while signed out), one in each variant:
   - **Control:** after onboarding, they land on `/explore`, exactly as before.
-  - **Test:** after onboarding, they land back on that skill page (`/s/<slug>`, with its query string), and Install now works.
+  - **Test:** after onboarding, they land back on that skill page (`/s/<slug>`: the page the sign-in link carried, which has no `?ref=share`), and Install now works.
 - A test user in the `test` variant who signs up from `/publish` lands back on `/publish`. **Skip for now** returns them the same way as **Continue**.
 - A test user who signs up from the home page lands on `/explore` in either variant (nothing specific to return to).
 
