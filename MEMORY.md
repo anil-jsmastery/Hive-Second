@@ -99,3 +99,7 @@ Never edit earlier blocks.
 
 ## Plan update: swarm cohort on server events
 - instrumentation-client.ts saves hive_cohort / hive_persona cookies when ?swarm= is present; trackServer adds them to every server event, so swarm events from the browser and the server both carry cohort.
+
+## After step 18
+- Experiment "Sign-up return" (created with its flag signup-return in one PostHog MCP call): control/test 50/50, goal = funnel from exposure to skill_installed, test-account filter off so the swarm counts, launched.
+- RememberReturn (on /sign-in and /sign-up) saves Clerk's redirect_url in the hive_return_to cookie. lib/return-to.ts pathAfterOnboarding() is used by saveStack and skipOnboarding: only users with a saved page call getFlag (exposure); in Step 18 every variant still goes to /explore.

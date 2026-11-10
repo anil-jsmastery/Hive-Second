@@ -1,8 +1,7 @@
 'use client';
-import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { STACKS } from '@/lib/constants';
-import { saveStack } from '@/app/onboarding/actions';
+import { saveStack, skipOnboarding } from '@/app/onboarding/actions';
 
 export function StackPicker() {
   const [stack, setStack] = useState<string | null>(null);
@@ -28,9 +27,7 @@ export function StackPicker() {
         >
           {pending ? 'Saving…' : 'Continue'}
         </button>
-        <Link className="link-btn" href="/explore">
-          Skip for now
-        </Link>
+        <form action={skipOnboarding}><button type="submit" className="link-btn">Skip for now</button></form>
       </div>
     </>
   );
