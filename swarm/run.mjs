@@ -224,7 +224,8 @@ async function runAgent(browser, p) {
     id: p.id, cohort: p.cohort, type: p.type, variant: p.variant, username: p.username, success: p.success,
     model: MODEL, steps: 0, inTok: 0, outTok: 0, cost: 0, priceKnown: true, retries: 0,
     parseErrors: 0, actionErrors: 0, interrupted: 0, failures: [], outcome: null, lastThought: '', trace: [],
-    seen: { installToast: false, skillPage: false, dashboard: false, leftDashboardTo: false },
+    sharedSlug: p.sharedSlug,
+    seen: { installToast: false, installedSlugs: [], skillPage: false, dashboard: false, leftDashboardTo: false },
   };
   const t0 = Date.now();
   const statePath = path.join(STATE_DIR, `${p.cohort}-${p.id}.json`);
@@ -248,7 +249,11 @@ async function runAgent(browser, p) {
     for (let step = 0; step < p.budget; step++) {
       if (stopped) { rec.outcome = 'budget_stop'; break; }
       const obs = await observe(page);
-      if (obs.toasts.includes('Install command copied')) rec.seen.installToast = true;
+      if (obs.toasts.includes('Install command copied')) {
+        rec.seen.installToast = true;
+        const slug = obs.url.startsWith('/s/') ? obs.url.split('/')[2].split('?')[0] : null;
+        if (slug && !rec.seen.installedSlugs.includes(slug)) rec.seen.installedSlugs.push(slug);
+      }
       if (obs.url.startsWith('/s/')) rec.seen.skillPage = true;
       if (obs.url.startsWith('/dashboard')) rec.seen.dashboard = true;
       else if (rec.seen.dashboard && (obs.url.startsWith('/s/') || obs.url.startsWith('/u/'))) rec.seen.leftDashboardTo = true;

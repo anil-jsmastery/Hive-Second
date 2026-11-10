@@ -7,139 +7,109 @@
 
 **Before you start.** Step 18 is committed (`git status` is clean). If this step goes wrong before its commit, discard its changes with `git restore . && git clean -fd -e build-plan` (your plan files are kept) and run it again in a new conversation.
 
-**Goal:** ship the fix that Cohort A's data points to, only in the `test` variant of `publish-flow-v2`, then run Cohort B to see whether it works.
+**Goal:** ship the fix that Cohort A's data points to, only in the `test` variant of `signup-return`, then run Cohort B to see whether it works.
 
 ## What Cohort A showed
 
-Builders filled in the publish form, submitted, and got field errors, which is expected. Then they corrected the field, but the old error stayed on screen until the next submit. Believing it, they kept "fixing" a field that was already correct, and many gave up. In the replays, one builder re-selects the same stack about 15 times under a stale "Choose a stack." message.
+Every new sign-up went from `/onboarding` to `/explore`, whatever page had asked them to sign in. Shared-link visitors were hit hardest: they arrived on a skill a friend had sent, clicked Install, signed up, and never saw that skill again. None of them installed it; some installed a different skill, the rest gave up. Builders who signed up from `/publish` lost their way to the form too, and needed extra steps to find it again.
 
-**Hypothesis:** if a field's error disappears as soon as its value changes, builders can see a fix worked, and more of them publish.
+**Hypothesis:** if people go back to the page that asked them to sign in, more shared-link visitors install the skill they were sent.
 
-**One change only.** The test variant changes this one behaviour. Everything else on the page stays identical, so a difference in the result can be traced to this change.
+**One change only.** The test variant changes where people go after onboarding. Everything else stays identical, so a difference in the result can be traced to this change.
 
 ## Rules
 
-- Only what `variant === 'test'` renders changes. The control stays exactly as built in Steps 11, 14 and 16: errors stay until the next submit.
-- No new events. The experiment reads `publish_started` and `skill_published`, which already carry `variant`.
-- `lib/validation.ts` and `app/publish/actions.ts` don't change. The server still validates every submit.
+- Only the `test` variant changes. The control stays exactly as built: after onboarding, `/explore`.
+- No new events. The experiment reads the exposure (`$feature_flag_called` for `signup-return`) and `skill_installed`.
+- Clerk's settings, onboarding's look and `RememberReturn` don't change.
 
 ## Files
 
 | File | Change |
 | --- | --- |
-| `components/publish/use-live-errors.ts` | New, VERBATIM below |
-| `components/publish/publish-form.tsx` | Use `useLiveErrors` for the field errors and the top alert (spec below) |
+| `lib/return-to.ts` | Replace with the version below, **VERBATIM**. Only the last two lines change: the test variant now returns the saved page |
 
-`components/publish/use-live-errors.ts`, **VERBATIM**:
+`lib/return-to.ts`, **VERBATIM**:
 
 ```ts
-'use client';
-import { useState } from 'react';
-import type { PublishField, PublishState } from '@/app/publish/actions';
+import 'server-only';
+import { cookies } from 'next/headers';
+import { getFlag } from '@/lib/analytics/server';
 
-// publish-flow-v2, test variant: a field's error disappears as soon as its value
-// changes, instead of staying on screen until the next submit. With enabled =
-// false (the control), it returns the server's errors unchanged.
-export function useLiveErrors(state: PublishState, enabled: boolean) {
-  // Fields cleared since the last submit. Each submit returns a new state object,
-  // so cleared fields belong to the state they were cleared on, and reset by
-  // themselves when the next result arrives. No effect needed.
-  const [cleared, setCleared] = useState<{ state: PublishState; fields: PublishField[] }>({
-    state,
-    fields: [],
-  });
-  const clearedFields = cleared.state === state ? cleared.fields : [];
+// Where a new user goes after onboarding. Only people who had a page to return to
+// (saved by RememberReturn) enter the signup-return experiment: getFlag assigns
+// their variant and records the exposure. The test variant goes back to the saved
+// page; the control goes to /explore, as before.
+export async function pathAfterOnboarding(userId: string): Promise<string> {
+  const jar = await cookies();
+  const saved = jar.get('hive_return_to')?.value;
+  jar.delete('hive_return_to');
+  const returnTo = saved ? decodeURIComponent(saved) : '';
+  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) return '/explore';
 
-  function clear(field: PublishField) {
-    if (!enabled || clearedFields.includes(field) || !state.errors?.[field]) return;
-    setCleared({ state, fields: [...clearedFields, field] });
-  }
-
-  const shown: PublishState['errors'] = enabled && state.errors
-    ? Object.fromEntries(
-        Object.entries(state.errors).filter(([field]) => !clearedFields.includes(field as PublishField)),
-      )
-    : state.errors;
-  const remaining = Boolean(shown && Object.keys(shown).length);
-  const fromFields = Boolean(state.errors && Object.keys(state.errors).length);
-  // The top alert summarises field errors, so it goes once they're all fixed.
-  // Other form errors (for example a failed save) always stay.
-  const showFormError = Boolean(state.formError) && (!enabled || !fromFields || remaining);
-
-  return { errors: shown, clear, showFormError };
+  const variant = await getFlag(userId, 'signup-return');
+  return variant === 'test' ? returnTo : '/explore';
 }
 ```
 
-**`components/publish/publish-form.tsx`:**
-
-1. Call `const { errors, clear, showFormError } = useLiveErrors(state, variant === 'test');` right after `useActionState`.
-2. Show each field's error from `errors` (for example `errors?.title`) instead of `state.errors`: the field's `.fld` gets `err` only while `errors` has a message for it.
-3. Show the top `div.form-alert` with `state.formError` only when `showFormError` is true.
-4. Call `clear(field)` whenever that field's value changes, alongside what the field already does:
-   - Title, Description and Tags inputs: in `onChange`, `clear('title')`, `clear('description')`, `clear('tags')`.
-   - Stack select: in `onChange`, after `setStack(e.target.value)`, `clear('stack')`.
-   - Skill content textarea: in `onChange`, `clear('content')`.
-5. Nothing else changes: labels, help text, layout, submission through `onSubmit`, the native controls, the paywall and the draft restore all stay as they are.
-
 ## Checks (before the commit)
 
-- `git diff HEAD --stat` shows only `components/publish/use-live-errors.ts` and `components/publish/publish-form.tsx`. `lib/analytics/events.ts`, `lib/validation.ts` and `app/publish/actions.ts` are unchanged.
-- `npx tsc --noEmit`, `npm run lint` and `npm run build` pass. (The hook uses no effect, so the React hooks lint rules pass.)
-- On the dev server, with the two test users from Step 18 (one in each variant):
-  - **Control:** submit an empty form, then type a title. The title error **stays** until you submit again, exactly as before.
-  - **Test:** submit an empty form (5 field errors and the top alert). Type a title: its error disappears straight away. Choose a stack: its error disappears. Fix every field: the top alert disappears too. Submit: the skill publishes.
-- Both variants still send `publish_started` and `skill_published` with the right `variant`.
+- `git diff HEAD --stat` shows only `lib/return-to.ts`.
+- `npx tsc --noEmit`, `npm run lint` and `npm run build` pass.
+- On the dev server, with new test users who sign up from a skill page (clicking Install while signed out), one in each variant:
+  - **Control:** after onboarding, they land on `/explore`, exactly as before.
+  - **Test:** after onboarding, they land back on that skill page (`/s/<slug>`, with its query string), and Install now works.
+- A test user in the `test` variant who signs up from `/publish` lands back on `/publish`. **Skip for now** returns them the same way as **Continue**.
+- A test user who signs up from the home page lands on `/explore` in either variant (nothing specific to return to).
 
 When every check passes, append the memory block below and commit as `step 19: the fix`. Cohort B comes after this commit, because it needs the fix deployed.
 
 ## Run the experiment (after the commit)
 
-1. **Push and confirm the deploy** (the user, rule 11): `git push origin main`. Wait until Vercel shows the new deployment as Ready **and** its commit is `step 19: the fix`. Then, on the live site, open `/publish` as a test user in the `test` variant, submit an empty form and type a title: the title error must disappear. If it doesn't, the live site is still serving the old form, and a cohort would measure nothing.
-2. **Restart the experiment's clock.** In PostHog, reset the `publish-flow-v2` experiment (or move its start date to now), so exposures from testing don't count. Only Cohort B should be in the result.
-3. **Release Cohort B: the builders the fix can affect, and enough of them.** The experiment compares control and test *inside* Cohort B; Cohort A was the baseline that showed what to fix, not part of the experiment. Decide two things **before** you run, and write them down:
-   - **Who's in the sample.** Only builders open the publish form, and private and team builders are stopped by the paywall and team creation, which the fix doesn't touch. They publish nothing in either variant and only dilute the result. So the sample is **plain builders**.
+1. **Push and confirm the deploy** (the user, rule 11): `git push origin main`. Wait until Vercel shows the new deployment as Ready **and** its commit is `step 19: the fix`. Then, on the live site, sign up a new test user from a skill page until one lands in the `test` variant: after onboarding they must land back on that skill. If they don't, the live site is still serving the old code, and a cohort would measure nothing.
+2. **Restart the experiment's clock.** In PostHog, reset the `signup-return` experiment (or move its start date to now), so exposures from testing don't count. Only Cohort B should be in the result.
+3. **Release Cohort B: the visitors the fix can affect, and enough of them.** The experiment compares control and test *inside* Cohort B; Cohort A was the baseline that showed what to fix, not part of the experiment. Decide two things **before** you run, and write them down:
+   - **Who's in the sample.** The fix matters most to people who arrive for one specific thing, so the sample is **shared-link visitors** (the `consumer-shared` persona): each arrives on a skill a friend shared, rotating through five skills, and succeeds only by installing that very skill.
    - **How many.** Enough for the difference you're looking for:
 
-   | Run | Command | Plain builders | Per variant |
+   | Run | Command | Shared-link visitors | Per variant |
    | --- | --- | --- | --- |
-   | Rehearsal | `--agents=24 --only=builder --exclude=builder-private,builder-team` | 24 | about 12 |
-   | Recorded video | `--agents=90 --only=builder --exclude=builder-private,builder-team`, **run twice** | 90 per batch, 180 in total | about 90 |
+   | Rehearsal | `--agents=24 --only=consumer-shared` | 24 | about 12 |
+   | Recorded video | `--agents=90 --only=consumer-shared`, **run twice** | 90 per batch, 180 in total | about 90 |
 
-   Clerk's development instance holds at most 100 users, so the recorded run is two batches of 90 builders with a cleanup in between. PostHog keeps both batches' events, so the experiment counts all 180. At about 90 per variant, a difference like the rehearsal's (79% against 100%) is detected almost every time, and a smaller one (79% against 95%) about 9 times in 10. At 24 per variant those were about 6 and 3 times in 10.
+   Clerk's development instance holds at most 100 users, so the recorded run is two batches of 90 with a cleanup in between. PostHog keeps both batches' events, so the experiment counts all 180. At about 90 per variant, a difference like 50% against 80% is detected almost every time, and 50% against 65% about half the time; at 12 per variant (the rehearsal), only large differences show.
+
+   Run each `cleanup.mjs` line yourself, in your terminal (the agent can't run it); the agent runs each batch.
 
    ```bash
    node swarm/cleanup.mjs --yes
-   node swarm/run.mjs --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team --spread-minutes=2 --concurrency=30 --url=<deployed URL>
+   node swarm/run.mjs --cohort=B --agents=90 --only=consumer-shared --spread-minutes=2 --concurrency=30 --url=<deployed URL>
    node swarm/cleanup.mjs --yes
-   node swarm/run.mjs --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team --spread-minutes=2 --concurrency=30 --url=<deployed URL>
+   node swarm/run.mjs --cohort=B --agents=90 --only=consumer-shared --spread-minutes=2 --concurrency=30 --url=<deployed URL>
    ```
 
-   `--agents` counts the agents that run, so each batch runs exactly 90 plain builders. At `--concurrency=30` a batch takes about 15 minutes and costs about $0.36 (about $0.72 for both). Use the concurrency that passed Step 17's speed check (30, or 20 if it showed retries or failed sign-ups).
+   `--agents` counts the agents that run, so each batch runs exactly 90 shared-link visitors. Use the concurrency that passed Step 17's speed check (30, or 20 if it showed retries or failed sign-ups).
 
    Keep "inconclusive, keep testing" as a possible and honest outcome, and keep the earlier runs and the sample decision visible: they're the proof the result wasn't cherry-picked.
 
-   Don't promote a subgroup you found *after* looking at the results: with enough slices, something always looks significant by chance. If a subgroup looks promising, make it the pre-declared sample of the next run, as above. `--spread-minutes` only changes when agents arrive, not the result.
+   Don't promote a subgroup you found *after* looking at the results: with enough slices, something always looks significant by chance. If a subgroup looks promising, make it the pre-declared sample of the next run, as above.
 
-   **Check the instrument before trusting the result.** In the run's `agents.jsonl`, builders who got stuck should be stuck on the product, not on the harness. If stuck builders have many failed actions around one control (a dropdown, say) and builders who published have none, the harness is distorting the experiment: fix the harness, restart the experiment's clock and run Cohort B again.
-4. **Read the result** in PostHog (the experiment, or through the PostHog MCP server): `skill_published` divided by `publish_started` for control and for test, and whether the difference is significant.
+   **Check the instrument before trusting the result.** In the run's `agents.jsonl`, visitors who failed should have failed on the product (sent to `/explore` and unable to find the shared skill again, or deciding it wasn't useful), not on the test tool. If failed visitors have many failed actions around one control (Clerk's sign-up form, say) and successful ones have none, the harness is distorting the experiment: fix the harness, restart the experiment's clock and run Cohort B again.
+4. **Read the result** in PostHog (the experiment, or through the PostHog MCP server): the goal metric, exposure to `skill_installed`, for control and for test, and whether the difference is significant. Also read the stricter number: shared-link visitors who installed **the skill they were sent**, per variant (the slug of their `share_link_opened` matches the slug of their `skill_installed`; the swarm's summary counts the same thing as success for `consumer-shared`).
 5. **Decide, then record it.** Significance is one input, not the whole decision. Weigh four things:
 
    | Question | What to look at |
    | --- | --- |
    | Is the effect real? | The significance test, on the sample you declared before the run |
-   | Do we know why? | Replays: are the stuck builders stuck on the problem the fix targets? |
+   | Do we know why? | Replays: do control visitors lose the shared skill after onboarding, and do test visitors land back on it? |
    | What does being wrong cost? | Can the change break anything, or only fail to help? |
    | Can we undo it? | A change behind a flag can be switched off instantly |
 
-   Write the decision as a new row in `DECISIONS.md`: the date, what you'll do (for example "ship the test variant to 100% through the flag and keep watching the funnel", "keep testing" or "drop it") and the evidence behind it, including how borderline it is. An inconclusive result is a valid result: write it down as such. Earlier rows stay as history. Commit the row on its own.
+   Write the decision as a new row in `DECISIONS.md`: the date, what you'll do (for example "ship the test variant to 100% through the flag and keep watching", "keep testing" or "drop it") and the evidence behind it, including how borderline it is. An inconclusive result is a valid result: write it down as such. Earlier rows stay as history. Commit the row on its own.
 
-6. **Act on the decision** (dashboard work, the user's job under rule 11). To ship, open the experiment in PostHog and use **Ship variant** with `test` (or end the experiment and ship it): the flag goes to 100% `test`, with no redeploy, because the flag is read on every request. Then sign in as a control test user and check that the title error now clears on the live site. Keep watching `publish_started` to `skill_published` for as long as the decision row says. To keep testing instead, leave the flag at 50/50 and plan the next run's sample before it starts.
+6. **Act on the decision** (dashboard work, the user's job under rule 11). To ship, open the experiment in PostHog and use **Ship variant** with `test` (or end the experiment and ship it): the flag goes to 100% `test`, with no redeploy, because the flag is read on every sign-up. Then sign up a new test user from a skill page and check they land back on it. To keep testing instead, leave the flag at 50/50 and plan the next run's sample before it starts.
 
-`DECISIONS.md` should already have the row recording why this fix was chosen (added after Cohort A, before Step 18). If it's missing, add it first:
-
-```text
-| <date> | Fix: clear each field's error when its value changes (test variant of publish-flow-v2) | Cohort A: few builders published; replays show builders re-fixing fields that were already correct because the old error stayed on screen |
-```
+`DECISIONS.md` should already have the row recording why this fix was chosen (added after Cohort A, before Step 18). If it's missing, add it first, written from your own Cohort A data.
 
 ## Update project memory
 
@@ -147,12 +117,12 @@ Append this block to the end of `MEMORY.md`, **VERBATIM**, before the `step 19: 
 
 ```md
 ## After step 19
-- publish-flow-v2 test variant: a field's error clears as soon as its value changes (components/publish/use-live-errors.ts, no effect). The control keeps errors until the next submit. No new events.
-- The experiment's result is recorded in DECISIONS.md once Cohort B (plain builders only, sample decided before the run) has run against the deployed fix.
+- signup-return test variant: after onboarding, pathAfterOnboarding() returns the saved page (hive_return_to) instead of /explore. The control still goes to /explore. No new events.
+- The experiment's result is recorded in DECISIONS.md once Cohort B (shared-link visitors only, sample decided before the run) has run against the deployed fix.
 ```
 
 ## Finish this step
 
 1. The agent commits the fix as `step 19: the fix` when the checks pass. Review it with `git show --stat HEAD`.
 2. Deploy: `git push origin main`.
-3. After Cohort B, the agent commits the result row as `decision: publish-flow-v2 result`.
+3. After Cohort B, the agent commits the result row as `decision: signup-return result`.

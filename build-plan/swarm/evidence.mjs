@@ -21,6 +21,9 @@ export async function succeeded(db, record, startedAtIso) {
   switch (record.success) {
     case 'install':
       return seen.installToast;
+    case 'install-shared':
+      // A shared-link visitor succeeds only by installing the very skill they were sent.
+      return Boolean(record.sharedSlug) && seen.installedSlugs.includes(record.sharedSlug);
     case 'view-skill':
       return seen.skillPage;
     case 'return-visit':

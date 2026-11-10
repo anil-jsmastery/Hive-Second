@@ -42,7 +42,7 @@ node swarm/run.mjs --url=https://your-app.vercel.app --cohort=A --agents=100 --s
 node swarm/run.mjs --url=https://your-app.vercel.app --return-wave=A --cohort-size=100
 
 # Cohort B (after the fix ships behind the flag)
-node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=90 --only=builder --exclude=builder-private,builder-team --spread-minutes=2 --concurrency=30
+node swarm/run.mjs --url=https://your-app.vercel.app --cohort=B --agents=90 --only=consumer-shared --spread-minutes=2 --concurrency=30
 ```
 
 | Flag | Default | Meaning |
@@ -104,7 +104,7 @@ All agents run on the same model, so agents with identical goals behave like cop
 Clerk development instances hold at most **100 users**, and every agent that signs up is one of them, as are your own test accounts. Before a cohort, run `node swarm/cleanup.mjs --yes` (it removes only `agent-*+clerk_test` accounts), and keep your own test accounts to five or fewer. Then:
 
 - **100 agents** fit: lurkers (5%) never sign up, so about 95 accounts are created.
-- **Builder-only batches** of `--agents=90 --only=builder --exclude=builder-private,builder-team` create 90 accounts each. For a bigger experiment, run several batches with a cleanup in between: PostHog keeps every batch's events, so the experiment adds them up.
+- **Single-persona batches**, like Cohort B's `--agents=90 --only=consumer-shared`, create 90 accounts each. For a bigger experiment, run several batches with a cleanup in between: PostHog keeps every batch's events, so the experiment adds them up.
 
 ## What agents see
 
@@ -151,7 +151,8 @@ After the 10-agent batch, read the **Reliability** line and the run's `summary.j
 
 | Persona | Share | Goal | Success means |
 | --- | --- | --- | --- |
-| consumer | 40% | Find a skill for a topic and install it (1 in 10 start from a shared link) | The "Install command copied" toast appeared |
+| consumer | 40% | Find a skill for a topic and install it | The "Install command copied" toast appeared |
+| consumer-shared | 1 in 10 consumers | Arrive on a skill a friend shared (rotating through five skills), decide whether it's useful, and install it if it is | The toast appeared on **that** skill's page: installing a different skill doesn't count |
 | builder | 25% | Publish their own skill (1 in 5 want it private, 1 in 5 want a private team skill) | A matching row in `skills` |
 | curator | 15% | Star a skill and leave a helpful comment, guided by their own interest (a topic, like consumers) | A row in `comments` |
 | mobile | 15% | Same as consumer, on a phone, impatient | The toast appeared |

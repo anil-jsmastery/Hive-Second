@@ -104,15 +104,18 @@ export function buildPersonas({ n, cohort, seed = 42 }) {
 
       if (type === 'consumer') {
         if (consumers % 10 === 0) {
-          const slug = SHARED_SLUGS[consumers % SHARED_SLUGS.length];
+          // Rotate through the shared skills (every tenth consumer is a shared-link visitor).
+          const slug = SHARED_SLUGS[(consumers / 10) % SHARED_SLUGS.length];
           p.variant = 'consumer-shared';
           p.startPath = `/s/${slug}?ref=share`;
+          p.sharedSlug = slug;
           p.goal = 'A friend shared this skill with you. Decide whether it is useful to you, and install it if it is.';
+          p.success = 'install-shared';
         } else {
           p.goal = `Find a skill that helps with ${topic} and install it. You have never used Hive before.`;
+          p.success = 'install';
         }
         p.budget = 30;
-        p.success = 'install';
         consumers++;
       }
 

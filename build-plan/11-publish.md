@@ -160,7 +160,7 @@ export async function publishSkill(variant: Variant, _prev: PublishState, formDa
 }
 ```
 
-**`/publish` page:** signed out → `redirect('/sign-in?redirect_url=/publish')`. In this step, `const variant: Variant = 'control'` (Step 18 replaces this with a feature flag). Render `<PublishStarted variant={variant} />` (sends `publish_started` once on mount, built on `TrackOnMount`) and `<PublishForm variant={variant} />`.
+**`/publish` page:** signed out → `redirect('/sign-in?redirect_url=/publish')`. `const variant: Variant = 'control'`: the experiment in Steps 18 and 19 is about sign-up, not this form, so the variant stays `control`; the property is kept so a future publish experiment needs no new events. Render `<PublishStarted variant={variant} />` (sends `publish_started` once on mount, built on `TrackOnMount`) and `<PublishForm variant={variant} />`.
 
 **Look:** the design file's publish view, exactly: the form on the left, a live preview of the Explore card on the right (stacked below 960px).
 
