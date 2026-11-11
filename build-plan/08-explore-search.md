@@ -82,7 +82,7 @@ Every embedded relation in this plan names its foreign key (for example `profile
 - Searching "terraform" shows the empty state and sends `search_performed` with `result_count: 0`.
 - Changing the stack filter while a query is set sends a new `search_performed`.
 - Opening `/explore` with no query sends no search event.
-- A fork's card says "forked from @{original author}" instead of "@{handle}" (check with any seed skill you fork in Step 10; the cards on profiles and the dashboard use the same `SkillCard`).
+- A fork's card says "forked from @{original author}" instead of "@{handle}" (check with any seed skill you fork in Step 10; profile pages use the same `SkillCard`, while the dashboard has its own rows, which already say "Forked from @…").
 - With no search, Explore lists skills newest first: the card order matches `created_at`, newest first (check the first three with the Supabase MCP server). A search still ranks by relevance, then stars.
 
 ## Update project memory
