@@ -7,7 +7,7 @@ import type { SkillCardData } from '@/lib/queries/search';
 
 // The whole card is one link, so the author and team are shown as text.
 export function SkillCard({ skill, query, rank }: { skill: SkillCardData; query?: string; rank?: number }) {
-  const { slug, title, description, tags, stack, stars_count, visibility, author, org } = skill;
+  const { slug, title, description, tags, stack, stars_count, visibility, author, org, forked_from } = skill;
 
   return (
     <Link
@@ -19,7 +19,11 @@ export function SkillCard({ skill, query, rank }: { skill: SkillCardData; query?
         <span className="glyph"><SkillGlyph title={title} stars={stars_count} /></span>
         <div className="skill-name">
           <h2>{title}</h2>
-          {author ? <span className="author">@{author.handle}</span> : null}
+          {forked_from ? (
+            <span className="author">forked from @{forked_from.author?.handle ?? ''}</span>
+          ) : author ? (
+            <span className="author">@{author.handle}</span>
+          ) : null}
         </div>
       </div>
       <p>{description}</p>

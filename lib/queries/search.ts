@@ -11,10 +11,11 @@ export type SkillCardData = {
   visibility: 'public' | 'private';
   author: { handle: string } | null;
   org: { slug: string; name: string } | null;
+  forked_from: { author: { handle: string } | null } | null;
 };
 
 export const CARD_FIELDS =
-  'slug, title, description, tags, stack, stars_count, visibility, author:profiles!skills_author_id_fkey(handle), org:organizations!skills_org_id_fkey(slug, name)';
+  'slug, title, description, tags, stack, stars_count, visibility, author:profiles!skills_author_id_fkey(handle), org:organizations!skills_org_id_fkey(slug, name), forked_from:forked_from_id(author:profiles!skills_author_id_fkey(handle))';
 
 export async function searchSkills(q: string, stack: string | null): Promise<SkillCardData[]> {
   const supabase = await createServerSupabase();
